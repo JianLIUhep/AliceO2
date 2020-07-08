@@ -1,0 +1,70 @@
+<map id="/home/travis/build/AliceO2Group/AliceO2/Detectors/TPC/workflow/src/ZSSpec.cxx" name="/home/travis/build/AliceO2Group/AliceO2/Detectors/TPC/workflow/src/ZSSpec.cxx">
+<area shape="rect" id="node2" href="$db/da1/ZSSpec_8h.html" title="TPCWorkflow/ZSSpec.h" alt="" coords="837,213,1008,240"/>
+<area shape="rect" id="node10" href="$dc/dcd/DataHeader_8h.html" title="Headers/DataHeader.h" alt="" coords="4794,549,4963,575"/>
+<area shape="rect" id="node21" href="$df/da1/WorkflowSpec_8h.html" title="Framework/WorkflowSpec.h" alt="" coords="611,213,813,240"/>
+<area shape="rect" id="node23" href="$d5/db8/DataRefUtils_8h.html" title="Framework/DataRefUtils.h" alt="" coords="4407,288,4599,315"/>
+<area shape="rect" id="node29" href="$d6/d68/DataSpecUtils_8h.html" title="Framework/DataSpecUtils.h" alt="" coords="5204,370,5407,397"/>
+<area shape="rect" id="node34" href="$d2/d43/ControlService_8h.html" title="Framework/ControlService.h" alt="" coords="8405,131,8611,158"/>
+<area shape="rect" id="node35" href="$de/dc6/ConfigParamRegistry_8h.html" title="Framework/ConfigParamRegistry.h" alt="" coords="280,288,523,315"/>
+<area shape="rect" id="node39" href="$d1/db4/InputRecordWalker_8h.html" title="A helper class to iteratate over all parts of all input routes. " alt="" coords="3561,131,3791,158"/>
+<area shape="rect" id="node41" href="$d3/d09/TPCSectorHeader_8h.html" title="DataFormatsTPC/TPCSector\lHeader.h" alt="" coords="2777,452,2978,493"/>
+<area shape="rect" id="node43" href="$dd/d04/ZeroSuppression_8h.html" title="Definitions of TPC Zero Suppression Data Headers. " alt="" coords="6199,459,6455,486"/>
+<area shape="rect" id="node45" href="$d9/d7c/DataFormats_2Detectors_2TPC_2include_2DataFormatsTPC_2Helpers_8h.html" title="DataFormatsTPC/Helpers.h" alt="" coords="2504,459,2701,486"/>
+<area shape="rect" id="node47" href="$d3/d64/GPUCATracking_8h.html" title="Wrapper class for TPC CA Tracker algorithm. " alt="" coords="2401,288,2660,315"/>
+<area shape="rect" id="node53" href="$d3/d7d/DataFormats_2Detectors_2TPC_2include_2DataFormatsTPC_2Digit_8h.html" title="DataFormatsTPC/Digit.h" alt="" coords="7615,370,7793,397"/>
+<area shape="rect" id="node57" href="$d4/dc5/GPUDataTypes_8h.html" title="GPUDataTypes.h" alt="" coords="5481,370,5612,397"/>
+<area shape="rect" id="node58" href="$d6/d20/GPUHostDataTypes_8h.html" title="GPUHostDataTypes.h" alt="" coords="1955,370,2115,397"/>
+<area shape="rect" id="node63" href="$d8/de7/GPUO2InterfaceConfiguration_8h.html" title="GPUO2InterfaceConfiguration.h" alt="" coords="1969,288,2194,315"/>
+<area shape="rect" id="node68" href="$d3/dd6/Sector_8h.html" title="TPCBase/Sector.h" alt="" coords="2243,459,2378,486"/>
+<area shape="rect" id="node69" href="$d6/d0c/Parser_8h.html" title="Utilities for parsing of data sequences. " alt="" coords="1029,370,1171,397"/>
+<area shape="rect" id="node73" href="$df/d13/GPUParam_8h.html" title="GPUParam.h" alt="" coords="6863,288,6966,315"/>
+<area shape="rect" id="node77" href="$d1/dfa/GPUReconstructionConvert_8h.html" title="GPUReconstructionConvert.h" alt="" coords="6010,370,6219,397"/>
+<area shape="rect" id="node78" href="$d4/dbe/GPURawData_8h.html" title="GPURawData.h" alt="" coords="7509,288,7630,315"/>
+<area shape="rect" id="node80" href="$d6/dec/Raw_2include_2DetectorsRaw_2RDHUtils_8h.html" title="DetectorsRaw/RDHUtils.h" alt="" coords="7351,370,7539,397"/>
+<area shape="rect" id="node84" href="$da/d08/RawFileWriter_8h.html" title="Utility class to write detectors data to (multiple) raw data file(s) respecting CRU format..." alt="" coords="6157,213,6374,240"/>
+<area shape="rect" id="node90" href="$d1/dec/HBFUtils_8h.html" title="DetectorsRaw/HBFUtils.h" alt="" coords="6549,288,6734,315"/>
+<area shape="rect" id="node95" href="$db/d0d/TPC_2base_2include_2TPCBase_2RDHUtils_8h.html" title="TPCBase/RDHUtils.h" alt="" coords="7368,213,7523,240"/>
+<area shape="rect" id="node96" href="$db/d86/ZeroSuppress_8h.html" title="TPCBase/ZeroSuppress.h" alt="" coords="2785,288,2969,315"/>
+<area shape="rect" id="node98" href="$d4/db9/DPLRawParser_8h.html" title="A raw page parser for DPL input. " alt="" coords="4411,131,4595,158"/>
+<area shape="rect" id="node99" href="$de/d28/GRPObject_8h.html" title="Header of the General Run Parameters object. " alt="" coords="8239,541,8419,583"/>
+<area shape="rect" id="node100" href="$d7/d61/NameConf_8h.html" title="Definition of the Names Generator class. " alt="" coords="6933,124,7161,165"/>
+<area shape="rect" id="node3" href="$d0/df4/DataProcessorSpec_8h.html" title="Framework/DataProcessorSpec.h" alt="" coords="773,288,1008,315"/>
+<area shape="rect" id="node4" href="$d0/d14/AlgorithmSpec_8h.html" title="Framework/AlgorithmSpec.h" alt="" coords="648,370,853,397"/>
+<area shape="rect" id="node6" href="$d5/dfb/DataRef_8h.html" title="Framework/DataRef.h" alt="" coords="3247,370,3409,397"/>
+<area shape="rect" id="node7" href="$d5/d3f/InputSpec_8h.html" title="Framework/InputSpec.h" alt="" coords="779,459,954,486"/>
+<area shape="rect" id="node9" href="$db/d2d/OutputSpec_8h.html" title="Framework/OutputSpec.h" alt="" coords="4786,459,4971,486"/>
+<area shape="rect" id="node18" href="$d7/df8/Types_8h.html" title="MemoryResources/Types.h" alt="" coords="4248,631,4443,657"/>
+<area shape="rect" id="node24" href="$db/dff/RootSerializationSupport_8h.html" title="Framework/RootSerialization\lSupport.h" alt="" coords="4719,363,4927,404"/>
+<area shape="rect" id="node25" href="$d1/d53/SerializationMethods_8h.html" title="Type wrappers for enfording a specific serialization method. " alt="" coords="3483,370,3730,397"/>
+<area shape="rect" id="node26" href="$d0/d95/TypeTraits_8h.html" title="Framework/TypeTraits.h" alt="" coords="3105,459,3279,486"/>
+<area shape="rect" id="node32" href="$d1/d00/CheckTypes_8h.html" title="Framework/CheckTypes.h" alt="" coords="4409,370,4596,397"/>
+<area shape="rect" id="node30" href="$d3/ddf/Output_8h.html" title="Framework/Output.h" alt="" coords="4996,459,5151,486"/>
+<area shape="rect" id="node36" href="$df/d72/ParamRetriever_8h.html" title="Framework/ParamRetriever.h" alt="" coords="211,459,421,486"/>
+<area shape="rect" id="node37" href="$dd/daf/ConfigParamStore_8h.html" title="Framework/ConfigParamStore.h" alt="" coords="144,370,371,397"/>
+<area shape="rect" id="node40" href="$d6/d5c/InputRecord_8h.html" title="Framework/InputRecord.h" alt="" coords="3015,213,3201,240"/>
+<area shape="rect" id="node42" href="$d0/dda/DataFormats_2Detectors_2TPC_2include_2DataFormatsTPC_2Constants_8h.html" title="DataFormatsTPC/Constants.h" alt="" coords="2141,549,2353,575"/>
+<area shape="rect" id="node44" href="$df/d21/GPUCommonDef_8h.html" title="GPUCommonDef.h" alt="" coords="6906,549,7049,575"/>
+<area shape="rect" id="node46" href="$d3/dc4/ClusterHardware_8h.html" title="Class of a TPC cluster as produced by the hardware cluster finder (needs a postprocessing step to con..." alt="" coords="3091,549,3347,575"/>
+<area shape="rect" id="node48" href="$de/dcd/ClusterNative_8h.html" title="Class of a TPC cluster in TPC&#45;native coordinates (row, time) " alt="" coords="5225,459,5461,486"/>
+<area shape="rect" id="node49" href="$d5/dc9/TrackTPC_8h.html" title="DataFormatsTPC/TrackTPC.h" alt="" coords="4077,370,4283,397"/>
+<area shape="rect" id="node50" href="$d1/d73/Defs_8h.html" title="Common definitions for 2D coordinates. " alt="" coords="2737,549,2914,575"/>
+<area shape="rect" id="node54" href="$d2/d45/GPUCommonRtypes_8h.html" title="GPUCommonRtypes.h" alt="" coords="7630,549,7797,575"/>
+<area shape="rect" id="node56" href="$df/d5d/common_2include_2CommonDataFormat_2TimeStamp_8h.html" title="CommonDataFormat/TimeStamp.h" alt="" coords="7494,459,7743,486"/>
+<area shape="rect" id="node61" href="$db/d14/MCTruthContainer_8h.html" title="Definition of a container to keep Monte Carlo truth external to simulation objects. " alt="" coords="3406,452,3575,493"/>
+<area shape="rect" id="node62" href="$d7/dcd/MCCompLabel_8h.html" title="SimulationDataFormat\l/MCCompLabel.h" alt="" coords="7767,452,7937,493"/>
+<area shape="rect" id="node64" href="$dd/dc6/GPUSettings_8h.html" title="GPUSettings.h" alt="" coords="6649,370,6764,397"/>
+<area shape="rect" id="node66" href="$d4/d50/GPUDisplayConfig_8h.html" title="GPUDisplayConfig.h" alt="" coords="5636,370,5788,397"/>
+<area shape="rect" id="node67" href="$d8/d93/GPUQAConfig_8h.html" title="GPUQAConfig.h" alt="" coords="5812,370,5935,397"/>
+<area shape="rect" id="node65" href="$d6/da2/GPUCommonMath_8h.html" title="GPUCommonMath.h" alt="" coords="6786,459,6939,486"/>
+<area shape="rect" id="node74" href="$d2/d6d/GPUDef_8h.html" title="GPUDef.h" alt="" coords="7066,459,7150,486"/>
+<area shape="rect" id="node75" href="$d6/d1b/GPUTPCGeometry_8h.html" title="GPUTPCGeometry.h" alt="" coords="6839,370,6990,397"/>
+<area shape="rect" id="node76" href="$d9/d9c/GPUTPCGMPolynomialField_8h.html" title="GPUTPCGMPolynomialField.h" alt="" coords="7116,370,7327,397"/>
+<area shape="rect" id="node79" href="$d4/d78/DataFormats_2Headers_2include_2Headers_2RAWDataHeader_8h.html" title="Headers/RAWDataHeader.h" alt="" coords="7915,549,8114,575"/>
+<area shape="rect" id="node81" href="$d6/d89/RDHAny_8h.html" title="Headers/RDHAny.h" alt="" coords="7225,459,7369,486"/>
+<area shape="rect" id="node82" href="$d9/d80/InteractionRecord_8h.html" title="CommonDataFormat/Interaction\lRecord.h" alt="" coords="6529,452,6761,493"/>
+<area shape="rect" id="node83" href="$d7/d34/DAQID_8h.html" title="Headers/DAQID.h" alt="" coords="5989,459,6123,486"/>
+<area shape="rect" id="node91" href="$db/d2c/ConfigurableParam_8h.html" title="CommonUtils/Configurable\lParam.h" alt="" coords="4107,452,4304,493"/>
+<area shape="rect" id="node93" href="$da/d6b/ConfigurableParamHelper_8h.html" title="CommonUtils/Configurable\lParamHelper.h" alt="" coords="3855,363,4052,404"/>
+<area shape="rect" id="node94" href="$de/da4/Triggers_8h.html" title="Definition of the 32 Central Trigger System (CTS) Trigger Types defined in https://twiki.cern.ch/twiki/pub/ALICE/NoteForFEDevelopers/CTS_CRU_FE_interface.pdf. " alt="" coords="6344,549,6557,575"/>
+<area shape="rect" id="node97" href="$d5/d1d/TPC_2base_2include_2TPCBase_2Mapper_8h.html" title="TPCBase/Mapper.h" alt="" coords="2370,370,2513,397"/>
+</map>

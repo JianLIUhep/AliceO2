@@ -1,0 +1,13 @@
+<map id="TableMaker" name="TableMaker">
+<area shape="rect" id="node2" href="$d6/d86/structo2_1_1framework_1_1Produces.html" title="{o2::framework::Produces\l\&lt; aod::ReducedEvents \&gt;\n||}" alt="" coords="1041,755,1225,847"/>
+<area shape="rect" id="node3" href="$d6/d86/structo2_1_1framework_1_1Produces.html" title="{o2::framework::Produces\&lt; T \&gt;\n||}" alt="" coords="637,469,860,546"/>
+<area shape="rect" id="node4" href="$d6/d86/structo2_1_1framework_1_1Produces.html" title="{o2::framework::Produces\l\&lt; aod::ReducedTracks \&gt;\n||}" alt="" coords="1249,755,1433,847"/>
+<area shape="rect" id="node5" href="$d6/d86/structo2_1_1framework_1_1Produces.html" title="{o2::framework::Produces\l\&lt; aod::ReducedEventsExtended \&gt;\n||}" alt="" coords="5,755,249,847"/>
+<area shape="rect" id="node17" href="$d6/d86/structo2_1_1framework_1_1Produces.html" title="{o2::framework::Produces\l\&lt; aod::ReducedTracksBarrel \&gt;\n||}" alt="" coords="274,755,493,847"/>
+<area shape="rect" id="node18" href="$d6/d86/structo2_1_1framework_1_1Produces.html" title="{o2::framework::Produces\l\&lt; aod::ReducedTracksBarrelCov \&gt;\n||}" alt="" coords="517,755,761,847"/>
+<area shape="rect" id="node19" href="$d6/d86/structo2_1_1framework_1_1Produces.html" title="{o2::framework::Produces\l\&lt; aod::ReducedEventsVtxCov \&gt;\n||}" alt="" coords="785,755,1016,847"/>
+<area shape="rect" id="node6" href="$d4/d79/structo2_1_1framework_1_1OutputObj.html" title="{o2::framework::OutputObj\l\&lt; TH1F \&gt;\n||+ spec()\l+ OutputObj()\l+ OutputObj()\l+ setObject()\l+ setObject()\l+ setObject()\l+ setHash()\l+ operator&#45;\&gt;()\l+ operator*()\l+ ref()\l}" alt="" coords="1641,689,1832,913"/>
+<area shape="rect" id="node15" href="$d4/d79/structo2_1_1framework_1_1OutputObj.html" title="{o2::framework::OutputObj\&lt; T \&gt;\n||+ OutputObj()\l+ OutputObj()\l+ setObject()\l+ setObject()\l+ setObject()\l+ setHash()\l+ spec()\l+ operator&#45;\&gt;()\l+ operator*()\l+ ref()\l}" alt="" coords="1893,403,2122,612"/>
+<area shape="rect" id="node8" href="$d3/d87/classuint32__t.html" title="{uint32_t\n||}" alt="" coords="1622,226,1697,303"/>
+<area shape="rect" id="node11" href="$da/d96/structo2_1_1framework_1_1InputSpec.html" title="{o2::framework::InputSpec\n||+ InputSpec()\l+ InputSpec()\l+ InputSpec()\l+ InputSpec()\l+ InputSpec()\l+ operator==()\l}" alt="" coords="2255,189,2445,340"/>
+</map>
