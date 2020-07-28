@@ -54,10 +54,13 @@ void DataSamplingPolicy::configure(const ptree& config)
   for (const auto& inputSpec : inputSpecs) {
 
     if (DataSpecUtils::getOptionalSubSpec(inputSpec).has_value()) {
+      header::DataDescription outputDescription;
+      outputDescription.runtimeInit(mName.c_str());
       OutputSpec outputSpec{
         {inputSpec.binding},
         createPolicyDataOrigin(),
-        createPolicyDataDescription(mName, outputId++),
+//        createPolicyDataDescription(mName, outputId++),
+	outputDescription,
         DataSpecUtils::getOptionalSubSpec(inputSpec).value(),
         inputSpec.lifetime};
 

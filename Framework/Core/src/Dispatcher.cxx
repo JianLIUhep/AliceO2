@@ -27,6 +27,9 @@
 #include <Configuration/ConfigurationFactory.h>
 #include <fairmq/FairMQDevice.h>
 
+#include "Framework/InputRecordWalker.h"
+#include <memory>
+
 using namespace o2::configuration;
 using namespace o2::monitoring;
 
@@ -76,7 +79,11 @@ void Dispatcher::init(InitContext& ctx)
 
 void Dispatcher::run(ProcessingContext& ctx)
 {
-  for (const auto& input : ctx.inputs()) {
+//	for (const DataRef& ref : InputRecordWalker(ctx.inputs())) {
+//		std::cout << "pass dispatcher 82" << std::endl;
+//	}
+//  for (const auto& input : ctx.inputs()) {
+  for (const DataRef& input : InputRecordWalker(ctx.inputs())) {
     if (input.header != nullptr && input.spec != nullptr) {
       const auto* inputHeader = header::get<header::DataHeader*>(input.header);
       ConcreteDataMatcher inputMatcher{inputHeader->dataOrigin, inputHeader->dataDescription, inputHeader->subSpecification};
@@ -99,6 +106,7 @@ void Dispatcher::run(ProcessingContext& ctx)
           } else {
             Output output = policy->prepareOutput(inputMatcher, input.spec->lifetime);
             output.metaHeader = std::move(header::Stack{std::move(output.metaHeader), std::move(headerStack)});
+//		std::cout << "pass 108" << std::endl;
             send(ctx.outputs(), input, std::move(output));
           }
         }
@@ -157,7 +165,11 @@ header::Stack Dispatcher::extractAdditionalHeaders(const char* inputHeaderStack)
 void Dispatcher::send(DataAllocator& dataAllocator, const DataRef& inputData, Output&& output) const
 {
   const auto* inputHeader = header::get<header::DataHeader*>(inputData.header);
+  char tmp;
+  char* buffer = &tmp;
+  memcpy(buffer, inputData.payload, inputHeader->payloadSize);
   dataAllocator.snapshot(output, inputData.payload, inputHeader->payloadSize, inputHeader->payloadSerializationMethod);
+//  dataAllocator.snapshot(output, buffer, inputHeader->payloadSize, inputHeader->payloadSerializationMethod);
 }
 
 // ideally this should be in a separate proxy device or use Lifetime::External
