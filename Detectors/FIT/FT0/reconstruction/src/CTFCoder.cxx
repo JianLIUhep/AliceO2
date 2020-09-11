@@ -22,7 +22,7 @@ using namespace o2::ft0;
 // Register encoded data in the tree (Fill is not called, will be done by caller)
 void CTFCoder::appendToTree(TTree& tree, CTF& ec)
 {
-  ec.appendToTree(tree, o2::detectors::DetID::getName(o2::detectors::DetID::FT0));
+  ec.appendToTree(tree, mDet.getName());
 }
 
 ///___________________________________________________________________________________
@@ -32,7 +32,7 @@ void CTFCoder::readFromTree(TTree& tree, int entry,
 {
   assert(entry >= 0 && entry < tree.GetEntries());
   CTF ec;
-  ec.readFromTree(tree, o2::detectors::DetID::getName(o2::detectors::DetID::FT0), entry);
+  ec.readFromTree(tree, mDet.getName(), entry);
   decode(ec, digitVec, channelVec);
 }
 
@@ -55,7 +55,7 @@ void CTFCoder::compress(CompressedDigits& cd, const gsl::span<const Digit>& digi
   cd.nChan.resize(cd.header.nTriggers);
 
   cd.idChan.resize(channelVec.size());
-  cd.qtc.resize(channelVec.size());
+  cd.qtcChain.resize(channelVec.size());
   cd.cfdTime.resize(channelVec.size());
   cd.qtcAmpl.resize(channelVec.size());
 
@@ -87,11 +87,74 @@ void CTFCoder::compress(CompressedDigits& cd, const gsl::span<const Digit>& digi
     for (uint8_t ic = 0; ic < cd.nChan[idig]; ic++) {
       assert(prevChan <= chanels[ic].ChId);
       cd.idChan[ccount] = chanels[ic].ChId - prevChan;
-      cd.qtc[ccount] = chanels[ic].ChainQTC;
+      cd.qtcChain[ccount] = chanels[ic].ChainQTC;
       cd.cfdTime[ccount] = chanels[ic].CFDTime;
       cd.qtcAmpl[ccount] = chanels[ic].QTCAmpl;
       prevChan = chanels[ic].ChId;
       ccount++;
     }
   }
+}
+
+///________________________________
+void CTFCoder::createCoders(const std::string& dictPath, o2::ctf::CTFCoderBase::OpType op)
+{
+  bool mayFail = true; // RS FIXME if the dictionary file is not there, do not produce exception
+  auto buff = readDictionaryFromFile<CTF>(dictPath, mayFail);
+  if (!buff.size()) {
+    if (mayFail) {
+      return;
+    }
+    throw std::runtime_error("Failed to create CTF dictionaty");
+  }
+  const auto* ctf = CTF::get(buff.data());
+
+  auto getFreq = [ctf](CTF::Slots slot) -> o2::rans::FrequencyTable {
+    o2::rans::FrequencyTable ft;
+    auto bl = ctf->getBlock(slot);
+    auto md = ctf->getMetadata(slot);
+    ft.addFrequencies(bl.getDict(), bl.getDict() + bl.getNDict(), md.min, md.max);
+    return std::move(ft);
+  };
+  auto getProbBits = [ctf](CTF::Slots slot) -> int {
+    return ctf->getMetadata(slot).probabilityBits;
+  };
+
+  CompressedDigits cd; // just to get member types
+#define MAKECODER(part, slot) createCoder<decltype(part)::value_type>(op, getFreq(slot), getProbBits(slot), int(slot))
+  // clang-format off
+  MAKECODER(cd.trigger,   CTF::BLC_trigger);
+  MAKECODER(cd.bcInc,     CTF::BLC_bcInc); 
+  MAKECODER(cd.orbitInc,  CTF::BLC_orbitInc);
+  MAKECODER(cd.nChan,     CTF::BLC_nChan);
+  //  MAKECODER(cd.eventFlags,     CTF::BLC_flags);
+  MAKECODER(cd.idChan,    CTF::BLC_idChan);
+  MAKECODER(cd.qtcChain,  CTF::BLC_qtcChain);
+  MAKECODER(cd.cfdTime,   CTF::BLC_cfdTime);
+  MAKECODER(cd.qtcAmpl,   CTF::BLC_qtcAmpl);
+  // clang-format on
+}
+
+///________________________________
+size_t CTFCoder::estimateCompressedSize(const CompressedDigits& cd)
+{
+  size_t sz = 0;
+  // clang-format off
+  // RS FIXME this is very crude estimate, instead, an empirical values should be used
+#define VTP(vec) typename std::remove_reference<decltype(vec)>::type::value_type
+#define ESTSIZE(vec, slot) mCoders[int(slot)] ?                         \
+  rans::calculateMaxBufferSize(vec.size(), reinterpret_cast<const o2::rans::LiteralEncoder64<VTP(vec)>*>(mCoders[int(slot)].get())->getAlphabetRangeBits(), sizeof(VTP(vec)) ) : vec.size()*sizeof(VTP(vec))
+  sz += ESTSIZE(cd.trigger,   CTF::BLC_trigger);
+  sz += ESTSIZE(cd.bcInc,     CTF::BLC_bcInc); 
+  sz += ESTSIZE(cd.orbitInc,  CTF::BLC_orbitInc);
+  sz += ESTSIZE(cd.nChan,     CTF::BLC_nChan);
+  //  sz += ESTSIZE(cd.eventFlags,     CTF::BLC_flags);
+  sz += ESTSIZE(cd.idChan,    CTF::BLC_idChan);
+  sz += ESTSIZE(cd.qtcChain,  CTF::BLC_qtcChain);
+  sz += ESTSIZE(cd.cfdTime,   CTF::BLC_cfdTime);
+  sz += ESTSIZE(cd.qtcAmpl,   CTF::BLC_qtcAmpl);
+  // clang-format on
+
+  LOG(INFO) << "Estimated output size is " << sz << " bytes";
+  return sz;
 }

@@ -390,7 +390,9 @@ void DeviceSpecHelpers::processOutEdgeActions(std::vector<DeviceSpec>& devices,
     }
     appendOutputRouteToSourceDeviceChannel(edge, device, channel);
   }
-  resourceManager.notifyAcceptedOffer(acceptedOffer);
+  if (std::string(acceptedOffer.hostname) != "") {
+    resourceManager.notifyAcceptedOffer(acceptedOffer);
+  }
   sortDeviceIndex();
 }
 
@@ -643,7 +645,9 @@ void DeviceSpecHelpers::processInEdgeActions(std::vector<DeviceSpec>& devices,
     }
     appendInputRouteToDestDeviceChannel(edge, consumerDevice, channel);
   }
-  resourceManager.notifyAcceptedOffer(acceptedOffer);
+  if (acceptedOffer.hostname != "") {
+    resourceManager.notifyAcceptedOffer(acceptedOffer);
+  }
 }
 
 // Construct the list of actual devices we want, given a workflow.
@@ -909,8 +913,12 @@ void DeviceSpecHelpers::prepareArguments(bool defaultQuiet, bool defaultStopped,
     // if found in the argument list. If not found they will be added with the default value
     FilterFunctionT filterArgsFct = [&](int largc, char** largv, const bpo::options_description& odesc) {
       // spec contains options
+      using namespace bpo::command_line_style;
+      auto style = (allow_short | short_allow_adjacent | short_allow_next | allow_long | long_allow_adjacent | long_allow_next | allow_sticky | allow_dash_for_short);
+
       bpo::command_line_parser parser{largc, largv};
       parser.options(odesc).allow_unregistered();
+      parser.style(style);
       bpo::parsed_options parsed_options = parser.run();
 
       bpo::variables_map varmap;
@@ -939,6 +947,8 @@ void DeviceSpecHelpers::prepareArguments(bool defaultQuiet, bool defaultStopped,
         realOdesc.add_options()("post-fork-command", bpo::value<std::string>());
         realOdesc.add_options()("shm-segment-size", bpo::value<std::string>());
         realOdesc.add_options()("shm-mlock-segment", bpo::value<std::string>());
+        realOdesc.add_options()("shm-zero-segment", bpo::value<std::string>());
+        realOdesc.add_options()("shm-throw-bad-alloc", bpo::value<std::string>());
         realOdesc.add_options()("shm-monitor", bpo::value<std::string>());
         realOdesc.add_options()("session", bpo::value<std::string>());
         filterArgsFct(expansions.we_wordc, expansions.we_wordv, realOdesc);
@@ -1052,6 +1062,8 @@ boost::program_options::options_description DeviceSpecHelpers::getForwardedDevic
     ("shm-monitor", bpo::value<std::string>(), "whether to use the shared memory monitor")                            //
     ("shm-segment-size", bpo::value<std::string>(), "size of the shared memory segment in bytes")                     //
     ("shm-mlock-segment", bpo::value<std::string>()->default_value("false"), "mlock shared memory segment")           //
+    ("shm-zero-segment", bpo::value<std::string>()->default_value("false"), "zero shared memory segment")             //
+    ("shm-throw-bad-alloc", bpo::value<std::string>()->default_value("true"), "throw if insufficient shm memory")     //
     ("environment", bpo::value<std::string>(), "comma separated list of environment variables to set for the device") //
     ("post-fork-command", bpo::value<std::string>(), "post fork command to execute (e.g. numactl {pid}")              //
     ("session", bpo::value<std::string>(), "unique label for the shared memory session")                              //

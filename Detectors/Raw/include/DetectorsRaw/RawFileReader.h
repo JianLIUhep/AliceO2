@@ -54,6 +54,11 @@ class RawFileReader
                   ErrNoSuperPageForTF,
                   NErrorsDefined
   };
+
+  enum class FirstTFDetection : int { Disabled,
+                                      Pending,
+                                      Done };
+
   static constexpr std::string_view ErrNames[] = {
     // long names for error codes
     "Wrong RDH.packetCounter increment",     // ErrWrongPacketCounterIncrement
@@ -97,6 +102,13 @@ class RawFileReader
   using InputsMap = std::map<OrigDescCard, std::vector<std::string>>;
 
   //=====================================================================================
+
+  // reference on blocks making single message part
+  struct PartStat {
+    int size;    // total size
+    int nBlocks; // number of consecutive LinkBlock objects
+  };
+
   // info on the smallest block of data to be read when fetching the HBF
   struct LinkBlock {
     enum { StartTF = 0x1,
@@ -109,6 +121,7 @@ class RawFileReader
     IR ir = 0;           //! ir starting the block
     uint16_t fileID = 0; //! file id where the block is located
     uint8_t flags = 0;   //! different flags
+    std::unique_ptr<char[]> dataCache; //! optional cache for fast access
     LinkBlock() = default;
     LinkBlock(int fid, size_t offs) : offset(offs), fileID(fid) {}
     void setFlag(uint8_t fl, bool v = true)
@@ -139,6 +152,7 @@ class RawFileReader
     std::string fairMQChannel{};                                                   //! name of the fairMQ channel for the output
     int nErrors = 0;                                                               //!
     std::vector<LinkBlock> blocks;                                                 //!
+    std::vector<std::pair<int, uint32_t>> tfStartBlock;
     //
     // transient info during processing
     bool openHB = false;    //!
@@ -147,7 +161,7 @@ class RawFileReader
 
     LinkData() = default;
     template <typename H>
-    LinkData(const H& rdh, const RawFileReader* r) : rdhl(rdh), reader(r)
+    LinkData(const H& rdh, RawFileReader* r) : rdhl(rdh), reader(r)
     {
     }
     bool preprocessCRUPage(const RDHAny& rdh, bool newSPage);
@@ -155,22 +169,21 @@ class RawFileReader
     size_t getLargestTF() const;
     size_t getNextHBFSize() const;
     size_t getNextTFSize() const;
-    size_t getNextTFSuperPagesStat(std::vector<size_t>& parts) const;
+    size_t getNextTFSuperPagesStat(std::vector<PartStat>& parts) const;
     int getNHBFinTF() const;
 
     size_t readNextHBF(char* buff);
     size_t readNextTF(char* buff);
-    size_t readNextSuperPage(char* buff);
+    size_t readNextSuperPage(char* buff, const PartStat* pstat = nullptr);
     size_t skipNextHBF();
     size_t skipNextTF();
 
     void rewindToTF(uint32_t tf);
-
     void print(bool verbose = false, const std::string& pref = "") const;
     std::string describe() const;
 
    private:
-    const RawFileReader* reader = nullptr; //!
+    RawFileReader* reader = nullptr; //!
   };
 
   //=====================================================================================
@@ -215,14 +228,22 @@ class RawFileReader
   size_t getBufferSize() const { return mBufferSize; }
 
   void setMaxTFToRead(uint32_t n) { mMaxTFToRead = n; }
+  bool isEmpty() const { return mEmpty; }
   uint32_t getMaxTFToRead() const { return mMaxTFToRead; }
   uint32_t getNTimeFrames() const { return mNTimeFrames; }
   uint32_t getOrbitMin() const { return mOrbitMin; }
   uint32_t getOrbitMax() const { return mOrbitMax; }
 
+  bool getCacheData() const { return mCacheData; }
+  void setCacheData(bool v) { mCacheData = v; }
+
   o2::header::DataOrigin getDefaultDataOrigin() const { return mDefDataOrigin; }
   o2::header::DataDescription getDefaultDataSpecification() const { return mDefDataDescription; }
   ReadoutCardType getDefaultReadoutCardType() const { return mDefCardType; }
+
+  void imposeFirstTF(uint32_t orbit, uint16_t bc);
+  void setTFAutodetect(FirstTFDetection v) { mFirstTFAutodetect = v; }
+  FirstTFDetection getTFAutodetect() const { return mFirstTFAutodetect; }
 
   static o2::header::DataOrigin getDataOrigin(const std::string& ors);
   static o2::header::DataDescription getDataDescription(const std::string& ors);
@@ -248,6 +269,7 @@ class RawFileReader
   std::vector<std::unique_ptr<char[]>> mFileBuffers; //! buffers for input files
   std::vector<OrigDescCard> mDataSpecs;              //! data origin and description for every input file + readout card type
   bool mInitDone = false;
+  bool mEmpty = true;
   std::unordered_map<LinkSpec_t, int> mLinkEntries; //! mapping between RDH specs and link entry in the mLinksData
   std::vector<LinkData> mLinksData;                 //! info on links data in the files
   std::vector<int> mOrderedIDs;                     //! links entries ordered in Specs
@@ -261,9 +283,10 @@ class RawFileReader
   int mCurrentFileID = 0;                           //! current file being processed
   long int mPosInFile = 0;                          //! current position in the file
   bool mMultiLinkFile = false;                      //! was > than 1 link seen in the file?
+  bool mCacheData = false;                          //! cache data to block after 1st scan (may require excessive memory, use with care)
   uint32_t mCheckErrors = 0;                        //! mask for errors to check
-  int mVerbosity = 0;
-
+  FirstTFDetection mFirstTFAutodetect = FirstTFDetection::Disabled; //!
+  int mVerbosity = 0;                                               //!
   ClassDefNV(RawFileReader, 1);
 };
 

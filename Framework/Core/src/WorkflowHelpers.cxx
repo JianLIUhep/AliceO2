@@ -19,7 +19,6 @@
 #include "Framework/RawDeviceService.h"
 #include "Framework/StringHelpers.h"
 
-#include "fairmq/FairMQDevice.h"
 #include "Headers/DataHeader.h"
 #include <algorithm>
 #include <list>
@@ -166,7 +165,7 @@ void WorkflowHelpers::injectServiceDevices(WorkflowSpec& workflow, ConfigContext
   
     return [](ProcessingContext& pc) {
       // this callback is never called since there is no expiring input
-      pc.services().get<RawDeviceService>().device()->WaitFor(std::chrono::seconds(2));
+      pc.services().get<RawDeviceService>().waitFor(2000);
     };
   }};
 
@@ -335,7 +334,7 @@ void WorkflowHelpers::injectServiceDevices(WorkflowSpec& workflow, ConfigContext
 
   // This is to inject a file sink so that any dangling ATSK object is written
   // to a ROOT file.
-  if (providedOutputObj.size() != 0) {
+  if (providedOutputObj.empty() == false) {
     auto rootSink = CommonDataProcessors::getOutputObjSink(outObjMap, outTskMap);
     extraSpecs.push_back(rootSink);
   }
@@ -356,7 +355,7 @@ void WorkflowHelpers::injectServiceDevices(WorkflowSpec& workflow, ConfigContext
   // select outputs of type AOD
   std::vector<InputSpec> OutputsInputsAOD;
   std::vector<bool> isdangling;
-  for (int ii = 0; ii < OutputsInputs.size(); ii++) {
+  for (auto ii = 0u; ii < OutputsInputs.size(); ii++) {
     if ((outputtypes[ii] & 2) == 2) {
 
       // temporarily also request to be dangling
@@ -379,7 +378,7 @@ void WorkflowHelpers::injectServiceDevices(WorkflowSpec& workflow, ConfigContext
 
   // select dangling outputs which are not of type AOD
   std::vector<InputSpec> OutputsInputsDangling;
-  for (int ii = 0; ii < OutputsInputs.size(); ii++) {
+  for (auto ii = 0u; ii < OutputsInputs.size(); ii++) {
     if ((outputtypes[ii] & 1) == 1 && (outputtypes[ii] & 2) == 0)
       OutputsInputsDangling.emplace_back(OutputsInputs[ii]);
   }
@@ -783,7 +782,7 @@ std::vector<InputSpec> WorkflowHelpers::computeDanglingOutputs(WorkflowSpec cons
   auto [OutputsInputs, outputtypes] = analyzeOutputs(workflow);
 
   std::vector<InputSpec> results;
-  for (int ii = 0; ii < OutputsInputs.size(); ii++) {
+  for (auto ii = 0u; ii < OutputsInputs.size(); ii++) {
     if ((outputtypes[ii] & 1) == 1) {
       results.emplace_back(OutputsInputs[ii]);
     }

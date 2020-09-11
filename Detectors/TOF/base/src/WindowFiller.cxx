@@ -121,6 +121,9 @@ void WindowFiller::fillOutputContainer(std::vector<Digit>& digits)
     int first = mDigitsPerTimeFrame.size();
     int ne = digits.size();
     ReadoutWindowData info(first, ne);
+    int orbit_shift = mReadoutWindowData.size() / 3;
+    int bc_shift = (mReadoutWindowData.size() % 3) * Geo::BC_IN_WINDOW;
+    info.setBCData(mFirstIR.orbit + orbit_shift, mFirstIR.bc + bc_shift);
     if (digits.size())
       mDigitsPerTimeFrame.insert(mDigitsPerTimeFrame.end(), digits.begin(), digits.end());
     mReadoutWindowData.push_back(info);
@@ -146,16 +149,11 @@ void WindowFiller::flushOutputContainer(std::vector<Digit>& digits)
 { // flush all residual buffered data
   // TO be implemented
 
-  printf("flushOutputContainer\n");
   for (Int_t i = 0; i < MAXWINDOWS; i++) {
     int n = 0;
     for (int j = 0; j < mStrips[i].size(); j++)
       n += ((mStrips[i])[j]).getNumberOfDigits();
-
-    printf("ro #%d: digits = %d\n", i, n);
   }
-
-  printf("Future digits = %lu\n", mFutureDigits.size());
 
   checkIfReuseFutureDigitsRO();
 
@@ -176,6 +174,13 @@ void WindowFiller::flushOutputContainer(std::vector<Digit>& digits)
 
     for (Int_t i = 0; i < MAXWINDOWS; i++) {
       fillOutputContainer(digits); // fill last readout windows
+    }
+
+    int nwindowperTF = o2::raw::HBFUtils::Instance().getNOrbitsPerTF() * Geo::NWINDOW_IN_ORBIT;
+
+    // check that all orbits are complete in terms of number of readout windows
+    while ((mReadoutWindowData.size() % nwindowperTF)) {
+      fillOutputContainer(digits); // fill windows without digits to complete all orbits in the last TF
     }
   }
 }

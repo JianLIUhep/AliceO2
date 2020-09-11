@@ -52,25 +52,31 @@ void CompressedDecodingTask::postData(ProcessingContext& pc)
   mHasToBePosted = false;
   mDecoder.FillWindows();
 
-  int nwindowperTF = o2::raw::HBFUtils::Instance().getNOrbitsPerTF() * 3;
-
   // send output message
   std::vector<o2::tof::Digit>* alldigits = mDecoder.getDigitPerTimeFrame();
   std::vector<o2::tof::ReadoutWindowData>* row = mDecoder.getReadoutWindowData();
 
   ReadoutWindowData* last = nullptr;
-  if (row->size())
-    last = &(row->at(row->size() - 1));
-  int lastval = last->first() + last->size();
+  o2::InteractionRecord lastIR;
+  int lastval = 0;
+  if (!row->empty()) {
+    last = &row->back();
+    lastval = last->first() + last->size();
+    lastIR = last->mFirstIR;
+  }
 
+  /*
+  int nwindowperTF = o2::raw::HBFUtils::Instance().getNOrbitsPerTF() * 3;
   while (row->size() < nwindowperTF) {
     // complete timeframe with empty readout windows
-    row->emplace_back(lastval, 0);
+    auto& dummy = row->emplace_back(lastval, 0);
+    dummy.mFirstIR = lastIR;
   }
   while (row->size() > nwindowperTF) {
     // remove extra readout windows after a check they are empty
     row->pop_back();
   }
+*/
 
   int n_tof_window = row->size();
   int n_orbits = n_tof_window / 3;
@@ -81,6 +87,10 @@ void CompressedDecodingTask::postData(ProcessingContext& pc)
   // add digits in the output snapshot
   pc.outputs().snapshot(Output{o2::header::gDataOriginTOF, "DIGITS", 0, Lifetime::Timeframe}, *alldigits);
   pc.outputs().snapshot(Output{o2::header::gDataOriginTOF, "READOUTWINDOW", 0, Lifetime::Timeframe}, *row);
+
+  // RS FIXME: At the moment dummy output to comply with CTF encoded inputs
+  std::vector<uint32_t> patterns;
+  pc.outputs().snapshot(Output{o2::header::gDataOriginTOF, "PATTERNS", 0, Lifetime::Timeframe}, patterns);
 
   // RS this is a hack to be removed once we have correct propagation of the firstTForbit by the framework
   auto setFirstTFOrbit = [&](const Output& spec, uint32_t orb) {
@@ -182,6 +192,7 @@ DataProcessorSpec getCompressedDecodingSpec(const std::string& inputDesc)
   std::vector<OutputSpec> outputs;
   outputs.emplace_back(o2::header::gDataOriginTOF, "DIGITS", 0, Lifetime::Timeframe);
   outputs.emplace_back(o2::header::gDataOriginTOF, "READOUTWINDOW", 0, Lifetime::Timeframe);
+  outputs.emplace_back(o2::header::gDataOriginTOF, "PATTERNS", 0, Lifetime::Timeframe); // RS FIXME: At the moment dummy output to comply with CTF encoded inputs
 
   return DataProcessorSpec{
     "tof-compressed-decoder",

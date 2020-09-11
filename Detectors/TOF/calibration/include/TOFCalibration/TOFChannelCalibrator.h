@@ -95,7 +95,7 @@ class TOFChannelData
   ClassDefNV(TOFChannelData, 1);
 };
 
-class TOFChannelCalibrator : public o2::calibration::TimeSlotCalibration<o2::dataformats::CalibInfoTOF, o2::tof::TOFChannelData>
+class TOFChannelCalibrator final : public o2::calibration::TimeSlotCalibration<o2::dataformats::CalibInfoTOF, o2::tof::TOFChannelData>
 {
   using TFType = uint64_t;
   using Slot = o2::calibration::TimeSlot<o2::tof::TOFChannelData>;
@@ -120,7 +120,7 @@ class TOFChannelCalibrator : public o2::calibration::TimeSlotCalibration<o2::dat
   const CcdbObjectInfoVector& getTimeSlewingInfoVector() const { return mInfoVector; }
   CcdbObjectInfoVector& getTimeSlewingInfoVector() { return mInfoVector; }
 
-  void isTest(bool isTest) { mTest = isTest; }
+  void setIsTest(bool isTest) { mTest = isTest; }
   bool isTest() const { return mTest; }
 
   void setCalibTOFapi(CalibTOFapi* api) { mCalibTOFapi = api; }

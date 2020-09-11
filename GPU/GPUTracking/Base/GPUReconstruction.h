@@ -147,10 +147,11 @@ class GPUReconstruction
   };
 
   struct krnlProperties {
-    krnlProperties(int t = 0, int b = 1) : nThreads(t), minBlocks(b) {}
+    krnlProperties(int t = 0, int b = 1, int b2 = 0) : nThreads(t), minBlocks(b), forceBlocks(b2) {}
     unsigned int nThreads;
     unsigned int minBlocks;
-    unsigned int total() { return nThreads * minBlocks; }
+    unsigned int forceBlocks;
+    unsigned int total() { return forceBlocks ? forceBlocks : (nThreads * minBlocks); }
   };
 
   struct krnlSetup {
@@ -180,7 +181,7 @@ class GPUReconstruction
   virtual void* getGPUPointer(void* ptr) { return ptr; }
   virtual void startGPUProfiling() {}
   virtual void endGPUProfiling() {}
-  int CheckErrorCodes();
+  int CheckErrorCodes(bool cpuOnly = false);
   void RunPipelineWorker();
   void TerminatePipelineWorker();
 
@@ -260,6 +261,7 @@ class GPUReconstruction
 
  protected:
   void AllocateRegisteredMemoryInternal(GPUMemoryResource* res, GPUOutputControl* control, GPUReconstruction* recPool);
+  void FreeRegisteredMemory(GPUMemoryResource* res);
   GPUReconstruction(const GPUSettingsDeviceBackend& cfg); // Constructor
   int InitPhaseBeforeDevice();
   virtual void UpdateSettings() {}
@@ -380,7 +382,8 @@ class GPUReconstruction
     std::vector<unsigned short> res;
   };
   std::unordered_map<GPUMemoryReuse::ID, MemoryReuseMeta> mMemoryReuse1to1;
-  std::vector<std::pair<void*, void*>> mNonPersistentMemoryStack;
+  std::vector<std::tuple<void*, void*, size_t>> mNonPersistentMemoryStack;
+  std::vector<GPUMemoryResource*> mNonPersistentIndividualAllocations;
 
   std::unique_ptr<GPUReconstructionPipelineContext> mPipelineContext;
 

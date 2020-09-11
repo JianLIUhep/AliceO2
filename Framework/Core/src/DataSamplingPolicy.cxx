@@ -18,6 +18,7 @@
 #include "Framework/DataSamplingConditionFactory.h"
 #include "Framework/DataSpecUtils.h"
 #include "Framework/DataDescriptorQueryBuilder.h"
+#include "Framework/Logger.h"
 
 #include <boost/property_tree/ptree.hpp>
 
@@ -54,13 +55,10 @@ void DataSamplingPolicy::configure(const ptree& config)
   for (const auto& inputSpec : inputSpecs) {
 
     if (DataSpecUtils::getOptionalSubSpec(inputSpec).has_value()) {
-      header::DataDescription outputDescription;
-      outputDescription.runtimeInit(mName.c_str());
       OutputSpec outputSpec{
         {inputSpec.binding},
         createPolicyDataOrigin(),
-//        createPolicyDataDescription(mName, outputId++),
-	outputDescription,
+        createPolicyDataDescription(mName, outputId++),
         DataSpecUtils::getOptionalSubSpec(inputSpec).value(),
         inputSpec.lifetime};
 

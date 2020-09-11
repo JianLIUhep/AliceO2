@@ -7,112 +7,460 @@
 // In applying this license CERN does not waive the privileges and immunities
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
+
+/// \file RecoDecay.h
+/// \brief Implementation of the RecoDecay class.
+///
+/// \author Vít Kučera <vit.kucera@cern.ch>, CERN
+
 #ifndef O2_ANALYSIS_RECODECAY_H_
 #define O2_ANALYSIS_RECODECAY_H_
 
-double energy(double px, double py, double pz, double mass)
+#include <tuple>
+#include <vector>
+#include <array>
+#include <cmath>
+
+#include <TDatabasePDG.h>
+#include <TPDGCode.h>
+
+#include "CommonConstants/MathConstants.h"
+
+using std::array;
+using namespace o2::constants::math;
+
+/// Base class for calculating properties of reconstructed decays.
+
+class RecoDecay
 {
-  double en_ = sqrt(mass * mass + px * px + py * py + pz * pz);
-  return en_;
-};
+ public:
+  /// Default constructor
+  RecoDecay() = default;
 
-double invmass2prongs2(double px0, double py0, double pz0, double mass0,
-                       double px1, double py1, double pz1, double mass1)
-{
+  /// Default destructor
+  ~RecoDecay() = default;
 
-  double energy0_ = energy(px0, py0, pz0, mass0);
-  double energy1_ = energy(px1, py1, pz1, mass1);
-  double energytot = energy0_ + energy1_;
+  // Auxiliary functions
 
-  double psum2 = (px0 + px1) * (px0 + px1) +
-                 (py0 + py1) * (py0 + py1) +
-                 (pz0 + pz1) * (pz0 + pz1);
-  return energytot * energytot - psum2;
-};
-
-double invmass3prongs2(double px0, double py0, double pz0, double mass0,
-                       double px1, double py1, double pz1, double mass1,
-                       double px2, double py2, double pz2, double mass2)
-{
-  double energy0_ = energy(px0, py0, pz0, mass0);
-  double energy1_ = energy(px1, py1, pz1, mass1);
-  double energy2_ = energy(px2, py2, pz2, mass2);
-  double energytot = energy0_ + energy1_ + energy2_;
-
-  double psum2 = (px0 + px1 + px2) * (px0 + px1 + px2) +
-                 (py0 + py1 + py2) * (py0 + py1 + py2) +
-                 (pz0 + pz1 + pz2) * (pz0 + pz1 + pz2);
-  return energytot * energytot - psum2;
-};
-
-double invmass2prongs(double px0, double py0, double pz0, double mass0,
-                      double px1, double py1, double pz1, double mass1)
-{
-  return sqrt(invmass2prongs2(px0, py0, pz0, mass0,
-                              px1, py1, pz1, mass1));
-};
-
-double invmass3prongs(double px0, double py0, double pz0, double mass0,
-                      double px1, double py1, double pz1, double mass1,
-                      double px2, double py2, double pz2, double mass2)
-{
-  return sqrt(invmass3prongs2(px0, py0, pz0, mass0,
-                              px1, py1, pz1, mass1,
-                              px2, py2, pz2, mass2));
-};
-
-double ptcand2prong(double px0, double py0, double px1, double py1)
-{
-  return sqrt((px0 + px1) * (px0 + px1) + (py0 + py1) * (py0 + py1));
-};
-
-double pttrack(double px, double py)
-{
-  return sqrt(px * px + py * py);
-};
-
-double declength(double xdecay, double ydecay, double zdecay, double xvtx, double yvtx, double zvtx)
-{
-  return sqrt((xdecay - xvtx) * (xdecay - xvtx) + (ydecay - yvtx) * (ydecay - yvtx) + (zdecay - zvtx) * (zdecay - zvtx));
-};
-
-double declengthxy(double xdecay, double ydecay, double xvtx, double yvtx)
-{
-  return sqrt((xdecay - xvtx) * (xdecay - xvtx) + (ydecay - yvtx) * (ydecay - yvtx));
-};
-
-/// Add a track object to a list.
-/// \param list      vector of track objects
-/// \param momentum  3-momentum components (x, y, z)
-/// \param temporal  mass or energy (depends on the vector type)
-template <typename T, typename U, typename V>
-void addTrack(std::vector<T>& list, U momentum_x, U momentum_y, U momentum_z, V temporal)
-{
-  T track(momentum_x, momentum_y, momentum_z, temporal);
-  list.push_back(track);
-}
-
-/// Add a track object to a list.
-/// \param list      vector of track objects
-/// \param momentum  array of 3-momentum components (x, y, z)
-/// \param temporal  mass or energy (depends on the vector type)
-template <typename T, typename U, typename V>
-void addTrack(std::vector<T>& list, const std::array<U, 3>& momentum, V temporal)
-{
-  addTrack(list, momentum[0], momentum[1], momentum[2], temporal);
-}
-
-/// Sum up track objects in a list.
-/// \param list  vector of track objects
-/// \return      Return the sum of the vector elements.
-template <typename T>
-T sumOfTracks(const std::vector<T>& list)
-{
-  T sum;
-  for (const auto& track : list) {
-    sum += track;
+  /// Sums numbers.
+  /// \param args  arbitrary number of numbers of arbitrary types
+  /// \return sum of numbers
+  template <typename... T>
+  static auto sum(const T&... args)
+  {
+    return (args + ...);
   }
-  return sum;
-}
+
+  /// Squares a number.
+  /// \note Promotes number to double before squaring to avoid precision loss in float multiplication.
+  /// \param num  a number of arbitrary type
+  /// \return number squared
+  template <typename T>
+  static auto sq(T num)
+  {
+    return (double)num * (double)num;
+  }
+
+  /// Sums squares of numbers.
+  /// \note Promotes numbers to double before squaring to avoid precision loss in float multiplication.
+  /// \param args  arbitrary number of numbers of arbitrary types
+  /// \return sum of squares of numbers
+  template <typename... T>
+  static auto sumOfSquares(const T&... args)
+  {
+    return (((double)args * (double)args) + ...);
+  }
+
+  /// Calculates square root of a sum of squares of numbers.
+  /// \param args  arbitrary number of numbers of arbitrary types
+  /// \return square root of sum of squares of numbers
+  template <typename... T>
+  static auto sqrtSumOfSquares(const T&... args)
+  {
+    return std::sqrt(sumOfSquares(args...));
+  }
+
+  /// Sums i-th elements of containers.
+  /// \param index  element index
+  /// \param args  pack of containers of elements accessible by index
+  /// \return sum of i-th elements
+  template <typename... T>
+  static auto getElement(int index, const T&... args)
+  {
+    return (args[index] + ...);
+  }
+
+  /// Sums 3-vectors.
+  /// \param args  pack of 3-vector arrays
+  /// \return sum of vectors
+  template <typename... T>
+  static auto sumOfVec(const array<T, 3>&... args)
+  {
+    return array{getElement(0, args...), getElement(1, args...), getElement(2, args...)};
+  }
+
+  /// Calculates scalar product of vectors.
+  /// \note Promotes numbers to double before squaring to avoid precision loss in float multiplication.
+  /// \param N  dimension
+  /// \param vec1,vec2  vectors
+  /// \return scalar product
+  template <std::size_t N, typename T, typename U>
+  static auto dotProd(const array<T, N>& vec1, const array<U, N>& vec2)
+  {
+    double res{0};
+    for (auto iDim = 0; iDim < N; ++iDim) {
+      res += (double)vec1[iDim] * (double)vec2[iDim];
+    }
+    return res;
+  }
+
+  /// Calculates magnitude squared of a vector.
+  /// \param N  dimension
+  /// \param vec  vector
+  /// \return magnitude squared
+  template <std::size_t N, typename T>
+  static auto mag2(const array<T, N>& vec)
+  {
+    return dotProd(vec, vec);
+  }
+
+  /// Calculates 3D distance between two points.
+  /// \param point1,point2  {x, y, z} coordinates of points
+  /// \return 3D distance between two points
+  template <typename T, typename U>
+  static auto distance(const T& point1, const U& point2)
+  {
+    return sqrtSumOfSquares(point1[0] - point2[0], point1[1] - point2[1], point1[2] - point2[2]);
+  }
+
+  /// Calculates 2D {x, y} distance between two points.
+  /// \param point1,point2  {x, y, z} or {x, y} coordinates of points
+  /// \return 2D {x, y} distance between two points
+  template <typename T, typename U>
+  static auto distanceXY(const T& point1, const U& point2)
+  {
+    return sqrtSumOfSquares(point1[0] - point2[0], point1[1] - point2[1]);
+  }
+
+  // Calculation of kinematic quantities
+
+  /// Calculates pseudorapidity.
+  /// \param mom  3-momentum array
+  /// \return pseudorapidity
+  template <typename T>
+  static auto Eta(const array<T, 3>& mom)
+  {
+    // eta = arctanh(pz/p)
+    if (std::abs(mom[0]) < Almost0 && std::abs(mom[1]) < Almost0) { // very small px and py
+      return (double)(mom[2] > 0 ? VeryBig : -VeryBig);
+    }
+    return (double)(std::atanh(mom[2] / P(mom)));
+  }
+
+  /// Calculates rapidity.
+  /// \param mom  3-momentum array
+  /// \param mass  mass
+  /// \return rapidity
+  template <typename T, typename U>
+  static auto Y(const array<T, 3>& mom, U mass)
+  {
+    // y = arctanh(pz/E)
+    return std::atanh(mom[2] / E(mom, mass));
+  }
+
+  /// Calculates cosine of pointing angle.
+  /// \param posPV  {x, y, z} position of the primary vertex
+  /// \param posSV  {x, y, z} position of the secondary vertex
+  /// \param mom  3-momentum array
+  /// \return cosine of pointing angle
+  template <typename T, typename U, typename V>
+  static auto CPA(const array<T, 3>& posPV, const array<U, 3>& posSV, const array<V, 3>& mom)
+  {
+    // CPA = (l . p)/(|l| |p|)
+    auto lineDecay = array{posSV[0] - posPV[0], posSV[1] - posPV[1], posSV[2] - posPV[2]};
+    auto cos = dotProd(lineDecay, mom) / std::sqrt(mag2(lineDecay) * mag2(mom));
+    if (cos < -1.) {
+      return -1.;
+    }
+    if (cos > 1.) {
+      return 1.;
+    }
+    return cos;
+  }
+
+  /// Calculates cosine of pointing angle in the {x, y} plane.
+  /// \param posPV  {x, y, z} or {x, y} position of the primary vertex
+  /// \param posSV  {x, y, z} or {x, y} position of the secondary vertex
+  /// \param mom  {x, y, z} or {x, y} momentum array
+  /// \return cosine of pointing angle in {x, y}
+  template <std::size_t N, std::size_t O, std::size_t P, typename T, typename U, typename V>
+  static auto CPAXY(const array<T, N>& posPV, const array<U, O>& posSV, const array<V, P>& mom)
+  {
+    // CPAXY = (r . pT)/(|r| |pT|)
+    auto lineDecay = array{posSV[0] - posPV[0], posSV[1] - posPV[1]};
+    auto momXY = array{mom[0], mom[1]};
+    auto cos = dotProd(lineDecay, momXY) / std::sqrt(mag2(lineDecay) * mag2(momXY));
+    if (cos < -1.) {
+      return -1.;
+    }
+    if (cos > 1.) {
+      return 1.;
+    }
+    return cos;
+  }
+
+  /// Calculates proper lifetime times c.
+  /// \note Promotes numbers to double before squaring to avoid precision loss in float multiplication.
+  /// \param mom  3-momentum array
+  /// \param mass  mass
+  /// \param length  decay length
+  /// \return proper lifetime times c
+  template <typename T, typename U, typename V>
+  static auto Ct(const array<T, 3>& mom, U length, V mass)
+  {
+    // c t = l m c^2/(p c)
+    return (double)length * (double)mass / P(mom);
+  }
+
+  /// Calculates cosine of θ* (theta star).
+  /// \note Implemented for 2 prongs only.
+  /// \note "Multiply by gamma" version
+  /// \param arrMom  array of two 3-momentum arrays
+  /// \param arrMass  array of two masses (in the same order as arrMom)
+  /// \param iProng  index of the prong
+  /// \return cosine of θ* of the i-th prong
+  template <typename T, typename U>
+  static auto CosThetaStarM(const array<array<T, 3>, 2>& arrMom, const array<U, 2>& arrMass, int iProng)
+  {
+    auto eProng = E(arrMom[iProng], arrMass[iProng]);                                                                      // energy of the prong
+    auto pVecTot = PVec(arrMom[0], arrMom[1]);                                                                             // momentum of the 2-prong system
+    auto pTot = P(pVecTot);                                                                                                // magnitude of the momentum of the 2-prong system
+    auto mTot = M(arrMom, arrMass);                                                                                        // invariant mass of the 2-prong system
+    auto eTot = eProng + E(arrMom[1 - iProng], arrMass[1 - iProng]);                                                       // energy of the 2-prong system
+    auto gamma = eTot / mTot;                                                                                              // γ, Lorentz gamma factor of the 2-prong system
+    auto beta = pTot / eTot;                                                                                               // β, velocity of the 2-prong system
+    auto pStar = std::sqrt(sq(sq(mTot) - sq(arrMass[0]) - sq(arrMass[1])) - sq(2 * arrMass[0] * arrMass[1])) / (2 * mTot); // p*, prong momentum in the rest frame of the 2-prong system
+    // p* = √[(M^2 - m1^2 - m2^2)^2 - 4 m1^2 m2^2]/2M
+    // Lorentz transformation of the longitudinal momentum of the prong into the rest frame of the 2-prong system:
+    // p*_L,i = γ (p_L,i - β E_i)
+    // p*_L,i = p* cos(θ*_i)
+    // cos(θ*_i) = γ (p_L,i - β E_i)/p*
+    return gamma * (dotProd(arrMom[iProng], pVecTot) / pTot - beta * eProng) / pStar;
+  }
+
+  /// Calculates cosine of θ* (theta star).
+  /// \note Implemented for 2 prongs only.
+  /// \note "Divide by gamma" version
+  /// \param arrMom  array of two 3-momentum arrays
+  /// \param arrMass  array of two masses (in the same order as arrMom)
+  /// \param iProng  index of the prong
+  /// \return cosine of θ* of the i-th prong
+  template <typename T, typename U>
+  static auto CosThetaStarD(const array<array<T, 3>, 2>& arrMom, const array<U, 2>& arrMass, int iProng)
+  {
+    auto eProng = E(arrMom[iProng], arrMass[iProng]);                                                                      // energy of the prong
+    auto pVecTot = PVec(arrMom[0], arrMom[1]);                                                                             // momentum of the 2-prong system
+    auto pTot = P(pVecTot);                                                                                                // magnitude of the momentum of the 2-prong system
+    auto mTot = M(arrMom, arrMass);                                                                                        // invariant mass of the 2-prong system
+    auto eTot = eProng + E(arrMom[1 - iProng], arrMass[1 - iProng]);                                                       // energy of the 2-prong system
+    auto gamma = eTot / mTot;                                                                                              // γ, Lorentz gamma factor of the 2-prong system
+    auto beta = pTot / eTot;                                                                                               // β, velocity of the 2-prong system
+    auto pStar = std::sqrt(sq(sq(mTot) - sq(arrMass[0]) - sq(arrMass[1])) - sq(2 * arrMass[0] * arrMass[1])) / (2 * mTot); // p*, prong momentum in the rest frame of the 2-prong system
+    // p* = √[(M^2 - m1^2 - m2^2)^2 - 4 m1^2 m2^2]/2M
+    // Lorentz transformation of the longitudinal momentum of the prong into the detector frame:
+    // p_L,i = γ (p*_L,i + β E*_i)
+    // p*_L,i = p_L,i/γ - β E*_i (less sensitive too incorrect masses?)
+    // cos(θ*_i) = (p_L,i/γ - β E*_i)/p*
+    return (dotProd(arrMom[iProng], pVecTot) / (pTot * gamma) - beta * E(pStar, arrMass[iProng])) / pStar;
+  }
+
+  /// Calculates cosine of θ* (theta star).
+  /// \note Implemented for 2 prongs only.
+  /// \note AliRoot version
+  /// \param arrMom  array of two 3-momentum arrays
+  /// \param arrMass  array of two masses (in the same order as arrMom)
+  /// \param mTot  assumed mass of mother particle
+  /// \param iProng  index of the prong
+  /// \return cosine of θ* of the i-th prong under the assumption of the invariant mass
+  template <typename T, typename U, typename V>
+  static auto CosThetaStarA(const array<array<T, 3>, 2>& arrMom, const array<U, 2>& arrMass, V mTot, int iProng)
+  {
+    auto pVecTot = PVec(arrMom[0], arrMom[1]);                                                                             // momentum of the mother particle
+    auto pTot = P(pVecTot);                                                                                                // magnitude of the momentum of the mother particle
+    auto eTot = E(pTot, mTot);                                                                                             // energy of the mother particle
+    auto gamma = eTot / mTot;                                                                                              // γ, Lorentz gamma factor of the mother particle
+    auto beta = pTot / eTot;                                                                                               // β, velocity of the mother particle
+    auto pStar = std::sqrt(sq(sq(mTot) - sq(arrMass[0]) - sq(arrMass[1])) - sq(2 * arrMass[0] * arrMass[1])) / (2 * mTot); // p*, prong momentum in the rest frame of the mother particle
+    // p* = √[(M^2 - m1^2 - m2^2)^2 - 4 m1^2 m2^2]/2M
+    // Lorentz transformation of the longitudinal momentum of the prong into the detector frame:
+    // p_L,i = γ (p*_L,i + β E*_i)
+    // p*_L,i = p_L,i/γ - β E*_i
+    // cos(θ*_i) = (p_L,i/γ - β E*_i)/p*
+    return (dotProd(arrMom[iProng], pVecTot) / (pTot * gamma) - beta * E(pStar, arrMass[iProng])) / pStar;
+  }
+
+  /// Sums 3-momenta.
+  /// \param args  pack of 3-momentum arrays
+  /// \return total 3-momentum array
+  template <typename... T>
+  static auto PVec(const array<T, 3>&... args)
+  {
+    return sumOfVec(args...);
+  }
+
+  /// Calculates momentum squared from momentum components.
+  /// \param px,py,pz  {x, y, z} momentum components
+  /// \return momentum squared
+  static auto P2(double px, double py, double pz)
+  {
+    return sumOfSquares(px, py, pz);
+  }
+
+  /// Calculates total momentum squared of a sum of 3-momenta.
+  /// \param args  pack of 3-momentum arrays
+  /// \return total momentum squared
+  template <typename... T>
+  static auto P2(const array<T, 3>&... args)
+  {
+    return sumOfSquares(getElement(0, args...), getElement(1, args...), getElement(2, args...));
+  }
+
+  /// Calculates (total) momentum magnitude.
+  /// \param args  {x, y, z} momentum components or pack of 3-momentum arrays
+  /// \return (total) momentum magnitude
+  template <typename... T>
+  static auto P(const T&... args)
+  {
+    return std::sqrt(P2(args...));
+  }
+
+  /// Calculates transverse momentum squared from momentum components.
+  /// \param px,py  {x, y} momentum components
+  /// \return transverse momentum squared
+  static auto Pt2(double px, double py)
+  {
+    return sumOfSquares(px, py);
+  }
+
+  /// Calculates total transverse momentum squared of a sum of 3-(or 2-)momenta.
+  /// \param args  pack of 3-(or 2-)momentum arrays
+  /// \return total transverse momentum squared
+  template <std::size_t N, typename... T>
+  static auto Pt2(const array<T, N>&... args)
+  {
+    return sumOfSquares(getElement(0, args...), getElement(1, args...));
+  }
+
+  /// Calculates (total) transverse momentum.
+  /// \param args  {x, y} momentum components or pack of 3-momentum arrays
+  /// \return (total) transverse momentum
+  template <typename... T>
+  static auto Pt(const T&... args)
+  {
+    return std::sqrt(Pt2(args...));
+  }
+
+  /// Calculates energy squared from momentum and mass.
+  /// \param args  momentum magnitude, mass
+  /// \param args  {x, y, z} momentum components, mass
+  /// \return energy squared
+  template <typename... T>
+  static auto E2(T... args)
+  {
+    return sumOfSquares(args...);
+  }
+
+  /// Calculates energy squared from momentum vector and mass.
+  /// \param mom  3-momentum array
+  /// \param mass  mass
+  /// \return energy squared
+  template <typename T, typename U>
+  static auto E2(const array<T, 3>& mom, U mass)
+  {
+    return E2(mom[0], mom[1], mom[2], mass);
+  }
+
+  /// Calculates energy from momentum and mass.
+  /// \param args  momentum magnitude, mass
+  /// \param args  {x, y, z} momentum components, mass
+  /// \param args  3-momentum array, mass
+  /// \return energy
+  template <typename... T>
+  static auto E(const T&... args)
+  {
+    return std::sqrt(E2(args...));
+  }
+
+  /// Calculates invariant mass squared from momentum magnitude and energy.
+  /// \param mom  momentum magnitude
+  /// \param energy  energy
+  /// \return invariant mass squared
+  static auto M2(double mom, double energy)
+  {
+    return energy * energy - mom * mom;
+  }
+
+  /// Calculates invariant mass squared from momentum aray and energy.
+  /// \param mom  3-momentum array
+  /// \param energy  energy
+  /// \return invariant mass squared
+  template <typename T>
+  static auto M2(const array<T, 3>& mom, double energy)
+  {
+    return energy * energy - P2(mom);
+  }
+
+  /// Calculates invariant mass squared from momenta and masses of several particles (prongs).
+  /// \param N  number of prongs
+  /// \param arrMom  array of N 3-momentum arrays
+  /// \param arrMass  array of N masses (in the same order as arrMom)
+  /// \return invariant mass squared
+  template <std::size_t N, typename T, typename U>
+  static auto M2(const array<array<T, 3>, N>& arrMom, const array<U, N>& arrMass)
+  {
+    array<double, 3> momTotal{0., 0., 0.}; // candidate momentum vector
+    double energyTot{0.};                  // candidate energy
+    for (auto iProng = 0; iProng < N; ++iProng) {
+      for (auto iMom = 0; iMom < 3; ++iMom) {
+        momTotal[iMom] += arrMom[iProng][iMom];
+      } // loop over momentum components
+      energyTot += E(arrMom[iProng], arrMass[iProng]);
+    } // loop over prongs
+    return energyTot * energyTot - P2(momTotal);
+  }
+
+  /// Calculates invariant mass.
+  /// \param args  momentum magnitude, energy
+  /// \param args  3-momentum array, energy
+  /// \param args  array of momenta, array of masses
+  /// \return invariant mass
+  template <typename... T>
+  static auto M(const T&... args)
+  {
+    return std::sqrt(M2(args...));
+  }
+
+  /// Returns particle mass based on PDG code.
+  /// \param pdg  PDG code
+  /// \return particle mass
+  static auto getMassPDG(int pdg)
+  {
+    // Try to get the particle mass from the list first.
+    for (const auto& particle : mListMass) {
+      if (std::get<0>(particle) == pdg) {
+        return std::get<1>(particle);
+      }
+    }
+    // Get the mass of the new particle and add it in the list.
+    auto newMass = TDatabasePDG::Instance()->GetParticle(pdg)->Mass();
+    mListMass.push_back(std::make_tuple(pdg, newMass));
+    return newMass;
+  }
+
+ private:
+  static std::vector<std::tuple<int, double>> mListMass; ///< list of particle masses in form (PDG code, mass)
+};
+
+std::vector<std::tuple<int, double>> RecoDecay::mListMass;
 
 #endif // O2_ANALYSIS_RECODECAY_H_

@@ -75,7 +75,7 @@ class GPUChainTracking : public GPUChain, GPUReconstructionHelpers::helperDelega
   int Finalize() override;
   int RunChain() override;
   void MemorySize(size_t& gpuMem, size_t& pageLockedHostMem) override;
-  int CheckErrorCodes() override;
+  int CheckErrorCodes(bool cpuOnly = false) override;
   bool SupportsDoublePipeline() override { return true; }
   int FinalizePipelinedProcessing() override;
   void ClearErrorCodes();
@@ -256,10 +256,12 @@ class GPUChainTracking : public GPUChain, GPUReconstructionHelpers::helperDelega
   int RunChainFinalize();
   int RunTPCTrackingSlices_internal();
   int RunTPCClusterizer_prepare(bool restorePointers);
+#ifdef GPUCA_TPC_GEOMETRY_O2
   std::pair<unsigned int, unsigned int> RunTPCClusterizer_transferZS(int iSlice, const CfFragment& fragment, int lane);
   void RunTPCClusterizer_compactPeaks(GPUTPCClusterFinder& clusterer, GPUTPCClusterFinder& clustererShadow, int stage, bool doGPU, int lane);
   std::pair<unsigned int, unsigned int> TPCClusterizerDecodeZSCount(unsigned int iSlice, const CfFragment& fragment);
   std::pair<unsigned int, unsigned int> TPCClusterizerDecodeZSCountUpdate(unsigned int iSlice, const CfFragment& fragment);
+#endif
   void RunTPCTrackingMerger_MergeBorderTracks(char withinSlice, char mergeMode, GPUReconstruction::krnlDeviceType deviceType);
   void RunTPCTrackingMerger_Resolve(char useOrigTrackParam, char mergeAll, GPUReconstruction::krnlDeviceType deviceType);
 

@@ -42,6 +42,7 @@
 #include "Framework/TextControlService.h"
 #include "Framework/CallbackService.h"
 #include "Framework/WorkflowSpec.h"
+#include "Framework/Monitoring.h"
 
 #include "ComputingResourceHelpers.h"
 #include "DataProcessingStatus.h"
@@ -382,7 +383,9 @@ void spawnDevice(std::string const& forwardedStdin,
                  ServiceRegistry& serviceRegistry,
                  boost::program_options::variables_map& varmap,
                  uv_loop_t* loop,
-                 std::vector<uv_poll_t*> handles)
+                 std::vector<uv_poll_t*> handles,
+                 unsigned parentCPU,
+                 unsigned parentNode)
 {
   int childstdin[2];
   int childstdout[2];
@@ -436,26 +439,20 @@ void spawnDevice(std::string const& forwardedStdin,
     for (auto& env : execution.environ) {
       char* formatted = strdup(fmt::format(env,
                                            fmt::arg("timeslice0", spec.inputTimesliceId),
-                                           fmt::arg("timeslice1", spec.inputTimesliceId + 1))
+                                           fmt::arg("timeslice1", spec.inputTimesliceId + 1),
+                                           fmt::arg("timeslice4", spec.inputTimesliceId + 4))
                                  .c_str());
       putenv(formatted);
     }
     execvp(execution.args[0], execution.args.data());
   }
   if (varmap.count("post-fork-command")) {
-    unsigned cpu = -1;
-    unsigned node = -1;
-#if __has_include(<linux/getcpu.h>)
-    getcpu(&cpu, &node, nullptr);
-#elif __has_include(<cpuid.h>)
-    GETCPU(cpu);
-#endif
     auto templateCmd = varmap["post-fork-command"];
     auto cmd = fmt::format(templateCmd.as<std::string>(),
                            fmt::arg("pid", id),
                            fmt::arg("id", spec.id),
-                           fmt::arg("cpu", cpu),
-                           fmt::arg("node", node),
+                           fmt::arg("cpu", parentCPU),
+                           fmt::arg("node", parentNode),
                            fmt::arg("name", spec.name),
                            fmt::arg("timeslice0", spec.inputTimesliceId),
                            fmt::arg("timeslice1", spec.inputTimesliceId + 1),
@@ -738,8 +735,8 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry, const o2::f
 
       simpleRawDeviceService = std::make_unique<SimpleRawDeviceService>(nullptr, spec);
 
-      serviceRegistry.registerService<RawDeviceService>(simpleRawDeviceService.get());
-      serviceRegistry.registerService<DeviceSpec>(&spec);
+      serviceRegistry.registerService(ServiceRegistryHelpers::handleForService<RawDeviceService>(simpleRawDeviceService.get()));
+      serviceRegistry.registerService(ServiceRegistryHelpers::handleForService<DeviceSpec>(&spec));
 
       // The decltype stuff is to be able to compile with both new and old
       // FairMQ API (one which uses a shared_ptr, the other one a unique_ptr.
@@ -753,10 +750,8 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry, const o2::f
 
       /// Create all the requested services and initialise them
       for (auto& service : spec.services) {
-        LOG(info) << "Initialising service " << service.name;
-        auto handle = service.init(serviceRegistry, *deviceState.get(), r.fConfig);
-        serviceRegistry.registerService(handle.hash, handle.instance);
-        dynamic_cast<DataProcessingDevice*>(r.fDevice.get())->bindService(service, handle.instance);
+        LOG(debug) << "Declaring service " << service.name;
+        serviceRegistry.declareService(service, *deviceState.get(), r.fConfig);
       }
       if (ResourcesMonitoringHelper::isResourcesMonitoringEnabled(spec.resourceMonitoringInterval)) {
         serviceRegistry.get<Monitoring>().enableProcessMonitoring(spec.resourceMonitoringInterval);
@@ -1054,6 +1049,15 @@ int runStateMachine(DataProcessorSpecs const& workflow,
         std::ostringstream forwardedStdin;
         WorkflowSerializationHelpers::dump(forwardedStdin, workflow, dataProcessorInfos);
         infos.reserve(deviceSpecs.size());
+
+        // This is guaranteed to be a single CPU.
+        unsigned parentCPU = -1;
+        unsigned parentNode = -1;
+#if __has_include(<linux/getcpu.h>)
+        getcpu(&parentCPU, &parentNode, nullptr);
+#elif __has_include(<cpuid.h>)
+        GETCPU(parentCPU);
+#endif
         for (size_t di = 0; di < deviceSpecs.size(); ++di) {
           if (deviceSpecs[di].resource.hostname != driverInfo.deployHostname) {
             spawnRemoteDevice(forwardedStdin.str(),
@@ -1062,7 +1066,7 @@ int runStateMachine(DataProcessorSpecs const& workflow,
             spawnDevice(forwardedStdin.str(),
                         deviceSpecs[di], driverInfo,
                         controls[di], deviceExecutions[di], infos,
-                        serviceRegistry, varmap, loop, pollHandles);
+                        serviceRegistry, varmap, loop, pollHandles, parentCPU, parentNode);
           }
         }
         assert(infos.empty() == false);
@@ -1129,7 +1133,11 @@ int runStateMachine(DataProcessorSpecs const& workflow,
         // I allow queueing of more sigchld only when
         // I process the previous call
         if (forceful_exit == true) {
-          LOG(INFO) << "Forceful exit requested.";
+          static bool forcefulExitMessage = true;
+          if (forcefulExitMessage) {
+            LOG(INFO) << "Forceful exit requested.";
+            forcefulExitMessage = false;
+          }
           killChildren(infos, SIGCONT);
           killChildren(infos, SIGKILL);
         }

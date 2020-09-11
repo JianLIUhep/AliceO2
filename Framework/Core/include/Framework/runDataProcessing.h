@@ -13,16 +13,13 @@
 #include "Framework/ChannelConfigurationPolicy.h"
 #include "Framework/CompletionPolicy.h"
 #include "Framework/DispatchPolicy.h"
-#include "Framework/ConfigParamsHelper.h"
 #include "Framework/DataProcessorSpec.h"
 #include "Framework/WorkflowSpec.h"
 #include "Framework/ConfigContext.h"
 #include "Framework/BoostOptionsRetriever.h"
 #include "Framework/CustomWorkflowTerminationHook.h"
 #include "Framework/CommonServices.h"
-
-#include <boost/program_options/options_description.hpp>
-#include <boost/program_options/variables_map.hpp>
+#include "Framework/Logger.h"
 
 #include <unistd.h>
 #include <vector>

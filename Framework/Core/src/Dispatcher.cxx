@@ -21,21 +21,17 @@
 #include "Framework/DataSpecUtils.h"
 #include "Framework/Logger.h"
 #include "Framework/ConfigParamRegistry.h"
+#include "Framework/InputRecordWalker.h"
 
-#include <Monitoring/Monitoring.h>
+#include "Framework/Monitoring.h"
 #include <Configuration/ConfigurationInterface.h>
 #include <Configuration/ConfigurationFactory.h>
 #include <fairmq/FairMQDevice.h>
 
-#include "Framework/InputRecordWalker.h"
-#include <memory>
-
 using namespace o2::configuration;
 using namespace o2::monitoring;
 
-namespace o2
-{
-namespace framework
+namespace o2::framework
 {
 
 Dispatcher::Dispatcher(std::string name, const std::string reconfigurationSource)
@@ -79,36 +75,30 @@ void Dispatcher::init(InitContext& ctx)
 
 void Dispatcher::run(ProcessingContext& ctx)
 {
-//	for (const DataRef& ref : InputRecordWalker(ctx.inputs())) {
-//		std::cout << "pass dispatcher 82" << std::endl;
-//	}
-//  for (const auto& input : ctx.inputs()) {
-  for (const DataRef& input : InputRecordWalker(ctx.inputs())) {
-    if (input.header != nullptr && input.spec != nullptr) {
-      const auto* inputHeader = header::get<header::DataHeader*>(input.header);
-      ConcreteDataMatcher inputMatcher{inputHeader->dataOrigin, inputHeader->dataDescription, inputHeader->subSpecification};
+  for (const auto& input : InputRecordWalker(ctx.inputs())) {
 
-      for (auto& policy : mPolicies) {
-        // todo: consider getting the outputSpec in match to improve performance
-        // todo: consider matching (and deciding) in completion policy to save some time
+    const auto* inputHeader = header::get<header::DataHeader*>(input.header);
+    ConcreteDataMatcher inputMatcher{inputHeader->dataOrigin, inputHeader->dataDescription, inputHeader->subSpecification};
 
-        if (policy->match(inputMatcher) && policy->decide(input)) {
-          // We copy every header which is not DataHeader or DataProcessingHeader,
-          // so that custom data-dependent headers are passed forward,
-          // and we add a DataSamplingHeader.
-          header::Stack headerStack{
-            std::move(extractAdditionalHeaders(input.header)),
-            std::move(prepareDataSamplingHeader(*policy.get(), ctx.services().get<const DeviceSpec>()))};
+    for (auto& policy : mPolicies) {
+      // todo: consider getting the outputSpec in match to improve performance
+      // todo: consider matching (and deciding) in completion policy to save some time
 
-          if (!policy->getFairMQOutputChannel().empty()) {
-            sendFairMQ(ctx.services().get<RawDeviceService>().device(), input, policy->getFairMQOutputChannelName(),
-                       std::move(headerStack));
-          } else {
-            Output output = policy->prepareOutput(inputMatcher, input.spec->lifetime);
-            output.metaHeader = std::move(header::Stack{std::move(output.metaHeader), std::move(headerStack)});
-//		std::cout << "pass 108" << std::endl;
-            send(ctx.outputs(), input, std::move(output));
-          }
+      if (policy->match(inputMatcher) && policy->decide(input)) {
+        // We copy every header which is not DataHeader or DataProcessingHeader,
+        // so that custom data-dependent headers are passed forward,
+        // and we add a DataSamplingHeader.
+        header::Stack headerStack{
+          std::move(extractAdditionalHeaders(input.header)),
+          std::move(prepareDataSamplingHeader(*policy.get(), ctx.services().get<const DeviceSpec>()))};
+
+        if (!policy->getFairMQOutputChannel().empty()) {
+          sendFairMQ(ctx.services().get<RawDeviceService>().device(), input, policy->getFairMQOutputChannelName(),
+                     std::move(headerStack));
+        } else {
+          Output output = policy->prepareOutput(inputMatcher, input.spec->lifetime);
+          output.metaHeader = std::move(header::Stack{std::move(output.metaHeader), std::move(headerStack)});
+          send(ctx.outputs(), input, std::move(output));
         }
       }
     }
@@ -165,11 +155,7 @@ header::Stack Dispatcher::extractAdditionalHeaders(const char* inputHeaderStack)
 void Dispatcher::send(DataAllocator& dataAllocator, const DataRef& inputData, Output&& output) const
 {
   const auto* inputHeader = header::get<header::DataHeader*>(inputData.header);
-  char tmp;
-  char* buffer = &tmp;
-  memcpy(buffer, inputData.payload, inputHeader->payloadSize);
   dataAllocator.snapshot(output, inputData.payload, inputHeader->payloadSize, inputHeader->payloadSerializationMethod);
-//  dataAllocator.snapshot(output, buffer, inputHeader->payloadSize, inputHeader->payloadSerializationMethod);
 }
 
 // ideally this should be in a separate proxy device or use Lifetime::External
@@ -234,5 +220,4 @@ Outputs Dispatcher::getOutputSpecs()
   return outputs;
 }
 
-} // namespace framework
-} // namespace o2
+} // namespace o2::framework

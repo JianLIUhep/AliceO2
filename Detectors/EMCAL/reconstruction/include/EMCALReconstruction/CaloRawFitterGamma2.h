@@ -37,7 +37,7 @@ namespace emcal
 /// Newton's method used for solving the set of non-linear equations.
 /// Ported from class AliCaloRawAnalyzerGamma2 from AliRoot
 
-class CaloRawFitterGamma2 : public CaloRawFitter
+class CaloRawFitterGamma2 final : public CaloRawFitter
 {
 
  public:
@@ -45,7 +45,7 @@ class CaloRawFitterGamma2 : public CaloRawFitter
   CaloRawFitterGamma2();
 
   /// \brief Destructor
-  ~CaloRawFitterGamma2() = default;
+  ~CaloRawFitterGamma2() final = default;
 
   void setNiterationsMax(int n) { mNiterationsMax = n; }
   int getNiterations() { return mNiter; }
@@ -53,9 +53,9 @@ class CaloRawFitterGamma2 : public CaloRawFitter
 
   /// \brief Evaluation Amplitude and TOF
   /// return Container with the fit results (amp, time, chi2, ...)
-  virtual CaloFitResults evaluate(const std::vector<Bunch>& bunchvector,
-                                  std::optional<unsigned int> altrocfg1,
-                                  std::optional<unsigned int> altrocfg2);
+  CaloFitResults evaluate(const std::vector<Bunch>& bunchvector,
+                          std::optional<unsigned int> altrocfg1,
+                          std::optional<unsigned int> altrocfg2) final;
 
  private:
   int mNiter = 0;           ///< number of iteraions

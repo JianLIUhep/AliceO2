@@ -22,12 +22,12 @@
 #include "Framework/DanglingContext.h"
 #include "Framework/EndOfStreamContext.h"
 #include "Framework/Tracing.h"
+#include "Framework/Monitoring.h"
 #include "../src/DataProcessingStatus.h"
 
 #include <Configuration/ConfigurationInterface.h>
 #include <Configuration/ConfigurationFactory.h>
 #include <Monitoring/MonitoringFactory.h>
-#include <Monitoring/Monitoring.h>
 #include <InfoLogger/InfoLogger.hxx>
 
 #include <options/FairMQProgOptions.h>
@@ -46,6 +46,13 @@ using Value = o2::monitoring::tags::Value;
 
 namespace o2::framework
 {
+
+/// This is a global service because read only
+template <>
+struct ServiceKindExtractor<InfoLoggerContext> {
+  constexpr static ServiceKind kind = ServiceKind::Global;
+};
+
 o2::framework::ServiceSpec CommonServices::monitoringSpec()
 {
   return ServiceSpec{"monitoring",
@@ -190,7 +197,7 @@ o2::framework::ServiceSpec CommonServices::configurationSpec()
     nullptr,
     nullptr,
     nullptr,
-    ServiceKind::Serial};
+    ServiceKind::Global};
 }
 
 o2::framework::ServiceSpec CommonServices::controlSpec()
@@ -404,7 +411,7 @@ auto sendRelayerMetrics(ServiceRegistry& registry, DataProcessingStats& stats) -
   monitoring.send(Metric{stats.lastElapsedTimeMs, "elapsed_time_ms"}.addTag(Key::Subsystem, Value::DPL));
   monitoring.send(Metric{stats.lastTotalProcessedSize, "processed_input_size_byte"}
                     .addTag(Key::Subsystem, Value::DPL));
-  monitoring.send(Metric{(stats.lastTotalProcessedSize / (stats.lastElapsedTimeMs ? stats.lastElapsedTimeMs : 1) / 1000),
+  monitoring.send(Metric{(stats.lastTotalProcessedSize.load() / (stats.lastElapsedTimeMs.load() ? stats.lastElapsedTimeMs.load() : 1) / 1000),
                          "processing_rate_mb_s"}
                     .addTag(Key::Subsystem, Value::DPL));
   monitoring.send(Metric{stats.lastLatency.minLatency, "min_input_latency_ms"}
@@ -414,7 +421,7 @@ auto sendRelayerMetrics(ServiceRegistry& registry, DataProcessingStats& stats) -
   monitoring.send(Metric{(stats.lastTotalProcessedSize / (stats.lastLatency.maxLatency ? stats.lastLatency.maxLatency : 1) / 1000), "input_rate_mb_s"}
                     .addTag(Key::Subsystem, Value::DPL));
 
-  stats.lastSlowMetricSentTimestamp = stats.beginIterationTimestamp;
+  stats.lastSlowMetricSentTimestamp.store(stats.beginIterationTimestamp.load());
   O2_SIGNPOST_END(MonitoringStatus::ID, MonitoringStatus::SEND, 0, 0, O2_SIGNPOST_BLUE);
 };
 
@@ -432,13 +439,14 @@ auto flushMetrics(ServiceRegistry& registry, DataProcessingStats& stats) -> void
   // Send all the relevant metrics for the relayer to update the GUI
   // FIXME: do a delta with the previous version if too many metrics are still
   // sent...
-  for (size_t si = 0; si < stats.relayerState.size(); ++si) {
-    auto state = stats.relayerState[si];
-    monitoring.send({state, "data_relayer/" + std::to_string(si)});
+  for (size_t si = 0; si < stats.statesSize.load(); ++si) {
+    auto value = std::atomic_load_explicit(&stats.relayerState[si], std::memory_order_relaxed);
+    std::atomic_thread_fence(std::memory_order_acquire);
+    monitoring.send({value, fmt::format("data_relayer/{}", si)});
   }
   relayer.sendContextState();
   monitoring.flushBuffer();
-  stats.lastMetricFlushedTimestamp = stats.beginIterationTimestamp;
+  stats.lastMetricFlushedTimestamp.store(stats.beginIterationTimestamp.load());
   O2_SIGNPOST_END(MonitoringStatus::ID, MonitoringStatus::FLUSH, 0, 0, O2_SIGNPOST_RED);
 };
 } // namespace

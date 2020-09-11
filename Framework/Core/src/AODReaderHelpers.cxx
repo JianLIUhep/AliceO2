@@ -27,7 +27,6 @@
 #include "Framework/ChannelInfo.h"
 #include "Framework/Logger.h"
 
-#include <FairMQDevice.h>
 #include <ROOT/RDataFrame.hxx>
 #include <TGrid.h>
 #include <TFile.h>
@@ -116,7 +115,7 @@ uint64_t getMask(header::DataDescription description)
   }
 }
 
-uint64_t calculateReadMask(std::vector<OutputRoute> const& routes, header::DataOrigin const& origin)
+uint64_t calculateReadMask(std::vector<OutputRoute> const& routes, header::DataOrigin const&)
 {
   uint64_t readMask = None;
   for (auto& route : routes) {
@@ -176,9 +175,11 @@ AlgorithmSpec AODReaderHelpers::aodSpawnerCallback(std::vector<InputSpec> reques
         };
 
         if (description == header::DataDescription{"TRACKPAR"}) {
-          outputs.adopt(Output{origin, description}, maker(o2::aod::TracksMetadata{}));
+          outputs.adopt(Output{origin, description}, maker(o2::aod::TracksExtensionMetadata{}));
         } else if (description == header::DataDescription{"TRACKPARCOV"}) {
-          outputs.adopt(Output{origin, description}, maker(o2::aod::TracksCovMetadata{}));
+          outputs.adopt(Output{origin, description}, maker(o2::aod::TracksCovExtensionMetadata{}));
+        } else if (description == header::DataDescription{"MUON"}) {
+          outputs.adopt(Output{origin, description}, maker(o2::aod::MuonsExtensionMetadata{}));
         } else {
           throw std::runtime_error("Not an extended table");
         }
@@ -187,37 +188,11 @@ AlgorithmSpec AODReaderHelpers::aodSpawnerCallback(std::vector<InputSpec> reques
   }};
 }
 
-namespace
-{
-void checkAndEnableAlien(std::string const& filename)
-{
-  // Check if filename is an alien file or if it contains alien files,
-  // TGrid::Connect if that is the case.
-  if (filename.rfind("alien://", 0) == 0) {
-    LOG(debug) << "AliEn file requested. Enabling support.";
-    TGrid::Connect("alien://");
-  }
-  if (filename.rfind("@", 0) == 0) {
-    std::string strippedFilename = filename;
-    strippedFilename.erase(0, 1);
-    std::ifstream filenames(strippedFilename);
-    for (std::string line; std::getline(filenames, line);) {
-      if (line.rfind("alien://", 0) == 0) {
-        LOG(debug) << "AliEn file requested. Enabling support.";
-        TGrid::Connect("alien://");
-        break;
-      }
-    }
-  }
-}
-} // namespace
-
 AlgorithmSpec AODReaderHelpers::rootFileReaderCallback()
 {
   auto callback = AlgorithmSpec{adaptStateful([](ConfigParamRegistry const& options,
                                                  DeviceSpec const& spec) {
     auto filename = options.get<std::string>("aod-file");
-    checkAndEnableAlien(filename);
 
     // create a DataInputDirector
     auto didir = std::make_shared<DataInputDirector>(filename);
@@ -287,8 +262,8 @@ AlgorithmSpec AODReaderHelpers::rootFileReaderCallback()
       tableMaker(o2::aod::StoredTracksCovMetadata{}, AODTypeMask::TrackCov, "O2track");
       tableMaker(o2::aod::TracksExtraMetadata{}, AODTypeMask::TrackExtra, "O2track");
       tableMaker(o2::aod::CalosMetadata{}, AODTypeMask::Calo, "O2calo");
-      tableMaker(o2::aod::CaloTriggersMetadata{}, AODTypeMask::Calo, "O2calotrigger");
-      tableMaker(o2::aod::MuonsMetadata{}, AODTypeMask::Muon, "O2muon");
+      tableMaker(o2::aod::CaloTriggersMetadata{}, AODTypeMask::CaloTrigger, "O2calotrigger");
+      tableMaker(o2::aod::StoredMuonsMetadata{}, AODTypeMask::Muon, "O2muon");
       tableMaker(o2::aod::MuonClustersMetadata{}, AODTypeMask::Muon, "O2muoncluster");
       tableMaker(o2::aod::ZdcsMetadata{}, AODTypeMask::Zdc, "O2zdc");
       tableMaker(o2::aod::BCsMetadata{}, AODTypeMask::BC, "O2bc");

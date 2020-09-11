@@ -11,6 +11,7 @@
 /// \file GPUReconstructionHIP.hip.cxx
 /// \author David Rohr
 
+#define __HIP_ENABLE_DEVICE_MALLOC__ 1 //Fix SWDEV-239120
 #define GPUCA_GPUTYPE_VEGA
 #define GPUCA_UNROLL(CUDA, HIP) GPUCA_M_UNROLL_##HIP
 #define GPUdic(CUDA, HIP) GPUCA_GPUdic_select_##HIP()
@@ -58,9 +59,7 @@ __global__ void dummyInitKernel(void* foo) {}
 #if defined(HAVE_O2HEADERS) && !defined(GPUCA_NO_ITS_TRAITS)
 #include "ITStrackingHIP/VertexerTraitsHIP.h"
 #else
-namespace o2
-{
-namespace its
+namespace o2::its
 {
 class VertexerTraitsHIP : public VertexerTraits
 {
@@ -68,8 +67,7 @@ class VertexerTraitsHIP : public VertexerTraits
 class TrackerTraitsHIP : public TrackerTraits
 {
 };
-} // namespace its
-} // namespace o2
+} // namespace o2::its
 #endif
 
 class GPUDebugTiming
@@ -123,7 +121,7 @@ GPUg() void runKernelHIP(GPUCA_CONSMEM_PTR int iSlice_internal, Args... args)
 */
 
 #undef GPUCA_KRNL_REG
-#define GPUCA_KRNL_REG(args) __launch_bounds__(GPUCA_M_STRIP(args))
+#define GPUCA_KRNL_REG(args) __launch_bounds__(GPUCA_M_MAX2_3(GPUCA_M_STRIP(args)))
 #undef GPUCA_KRNL_CUSTOM
 #define GPUCA_KRNL_CUSTOM(args) GPUCA_M_STRIP(args)
 #undef GPUCA_KRNL_BACKEND_XARGS
@@ -156,7 +154,7 @@ void GPUReconstructionHIPBackend::runKernelBackendInternal<GPUMemClean16, 0>(krn
 template <class T, int I, typename... Args>
 void GPUReconstructionHIPBackend::runKernelBackendInternal(krnlSetup& _xyz, const Args&... args)
 {
-  if (mProcessingSettings.deviceTimers) {
+  if (mProcessingSettings.deviceTimers && mProcessingSettings.debugLevel > 0) {
 #ifdef __CUDACC__
     GPUFailedMsg(hipEventRecord((hipEvent_t)mDebugEvents->DebugStart, mInternals->Streams[x.stream]));
 #endif
@@ -290,7 +288,6 @@ int GPUReconstructionHIPBackend::InitDevice_Runtime()
     mDeviceId = bestDevice;
 
     GPUFailedMsgI(hipGetDeviceProperties(&hipDeviceProp, mDeviceId));
-    hipDeviceProp.totalConstMem = 65536; // TODO: Remove workaround, fixes incorrectly reported HIP constant memory
 
     if (mProcessingSettings.debugLevel >= 2) {
       GPUInfo("Using HIP Device %s with Properties:", hipDeviceProp.name);
@@ -554,7 +551,7 @@ int GPUReconstructionHIPBackend::GPUDebug(const char* state, int stream)
     GPUError("HIP Error %s while running kernel (%s) (Stream %d)", hipGetErrorString(cuErr), state, stream);
     return (1);
   }
-  if (mProcessingSettings.debugLevel == 0) {
+  if (mProcessingSettings.debugLevel <= 0) {
     return (0);
   }
   if (GPUFailedMsgI(hipDeviceSynchronize())) {
@@ -586,7 +583,7 @@ void* GPUReconstructionHIPBackend::getGPUPointer(void* ptr)
 
 void GPUReconstructionHIPBackend::PrintKernelOccupancies()
 {
-  unsigned int maxBlocks, threads, suggestedBlocks;
+  int maxBlocks, threads, suggestedBlocks;
 #define GPUCA_KRNL(x_class, x_attributes, x_arguments, x_forward) GPUCA_KRNL_WRAP(GPUCA_KRNL_LOAD_, x_class, x_attributes, x_arguments, x_forward)
 #define GPUCA_KRNL_LOAD_single(x_class, x_attributes, x_arguments, x_forward)                                                         \
   GPUFailedMsg(hipOccupancyMaxPotentialBlockSize(&suggestedBlocks, &threads, GPUCA_M_CAT(krnl_, GPUCA_M_KRNL_NAME(x_class)), 0, 0));  \

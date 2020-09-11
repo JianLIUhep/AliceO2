@@ -33,3 +33,21 @@ o2_add_test(ft0
             SOURCES test/test_ctf_io_ft0.cxx
             COMPONENT_NAME ctf
             LABELS ctf)
+          
+o2_add_test(fv0
+            PUBLIC_LINK_LIBRARIES O2::CTFWorkflow
+                                  O2::FV0Reconstruction
+	                          O2::DataFormatsFV0
+            SOURCES test/test_ctf_io_fv0.cxx
+            COMPONENT_NAME ctf
+            LABELS ctf)
+
+o2_add_test(tof
+            PUBLIC_LINK_LIBRARIES O2::CTFWorkflow
+                                  O2::TOFBase
+                                  O2::TOFReconstruction
+                                  O2::DataFormatsTOF
+            SOURCES test/test_ctf_io_tof.cxx
+            COMPONENT_NAME ctf
+            LABELS ctf)
+

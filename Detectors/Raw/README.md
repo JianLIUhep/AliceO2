@@ -125,11 +125,17 @@ header  : what it wants to add right after the RDH of the new CRU page before th
           the payload (starting at ptr+actualSize) will be written
 ```
 
-The method mast return actual size of the bloc which can be written (`<=maxSize`).
+The method must return actual size of the bloc which can be written (`<=maxSize`).
 If this method populates the trailer, it must ensure that it returns the actual size such that
 `actualSize + trailer.size() <= maxSize`.
-In case returned `actualSize` is 0, current CRU page will be closed w/o adding anything, and new
+In case returned `actualSize` is 0, current CRU page will be closed just with user trailer added (if any) and new
 query of this method will be done on the new CRU page.
+
+By default, the carry-over callback is not called if remaining data fits to the free space of the 8KB page (or the super-page).
+In case the splitting affects the information written in the payload trailer, user may set `writer.setApplyCarryOverToLastPage(true)`.
+With this flag set to `ON`, if there was at least one splitting for the user payload provided to `addData` method, then the carry-over
+method will be called also for the very last chunk (which by definition does not need splitting) and the supplied trailer will overwrite
+the tail of the this chunk instead of adding it incrementally.
 
 Additionally, in case detector wants to add some information between `empty` HBF packet's opening and
 closing RDHs (they will be added automatically using the HBFUtils functionality for all HBFs w/o data
@@ -305,6 +311,8 @@ o2-raw-file-reader-workflow
   --super-page-size arg (=1048576)      super-page size for FMQ parts definition
   --part-per-hbf                        FMQ parts per superpage (default) of HBF
   --raw-channel-config arg              optional raw FMQ channel for non-DPL output
+  --cache-data                          cache data at 1st reading, may require excessive memory!!!
+  --detect-tf0                          autodetect HBFUtils start Orbit/BC from 1st TF seen
   --configKeyValues arg                 semicolon separated key=value strings
 
   # to suppress various error checks / reporting
@@ -323,7 +331,8 @@ The workflow takes an input from the configuration file (as described in `RawFil
 with the `OutputSpec`s indicated in the configuration file (or defaults). Each link data gets `SubSpecification` according to DataDistribution
 scheme.
 
-If `--loop` argument is provided, data will be re-played in loop. The delay (in seconds) can be added between sensding of consecutive TFs to avoid pile-up of TFs.
+If `--loop` argument is provided, data will be re-played in loop. The delay (in seconds) can be added between sensding of consecutive TFs to avoid pile-up of TFs. By default at each iteration the data will be again read from the disk.
+Using `--cache-data` option one can force caching the data to memory during the 1st reading, this avoiding disk I/O for following iterations, but this option should be used with care as it will eventually create a memory copy of all TFs to read.
 
 At every invocation of the device `processing` callback a full TimeFrame for every link will be added as a multi-part `FairMQ` message and relayed by the relevant channel.
 By default each part will be a single CRU super-page of the link. This behaviour can be changed by providing `part-per-hbf` option, in which case each HBF will be added as a separate HBF.
@@ -353,7 +362,9 @@ Options:
   -m [ --max-tf] arg (=0xffffffff)  max. TF ID to read (counts from 0)
   -v [ --verbosity ] arg (=0)    1: long report, 2 or 3: print or dump all RDH
   -s [ --spsize ]    arg (=1048576) nominal super-page size in bytes
-  -t [ --hbfpertf ]  arg (=256)     nominal number of HBFs per TF
+  --detect-tf0                      autodetect HBFUtils start Orbit/BC from 1st TF seen
+  --rorc                            impose RORC as default detector mode
+  --configKeyValues arg             semicolon separated key=value strings
   --nocheck-packet-increment        ignore /Wrong RDH.packetCounter increment/
   --nocheck-page-increment          ignore /Wrong RDH.pageCnt increment/
   --check-stop-on-page0             check  /RDH.stop set of 1st HBF page/

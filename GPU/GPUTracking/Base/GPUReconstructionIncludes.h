@@ -14,12 +14,6 @@
 #ifndef GPURECONSTRUCTIONINCLUDES_H
 #define GPURECONSTRUCTIONINCLUDES_H
 
-// Disable assertions since they produce errors in GPU Code
-#ifdef assert
-#undef assert
-#endif
-#define assert(param)
-
 #ifndef WIN32
 #include <sys/syscall.h>
 #include <semaphore.h>
@@ -61,6 +55,9 @@
   }                                                                                    \
   if (param().rec.loopInterpolationInExtraPass < 0) {                                  \
     param().rec.loopInterpolationInExtraPass = GPUCA_MERGER_SPLIT_LOOP_INTERPOLATION;  \
+  }                                                                                    \
+  if (mProcessingSettings.tpcCompressionGatherModeKernel < 0) {                        \
+    mProcessingSettings.tpcCompressionGatherModeKernel = GPUCA_COMP_GATHER_KERNEL;     \
   }
 
 #endif

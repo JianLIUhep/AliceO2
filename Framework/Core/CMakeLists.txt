@@ -8,22 +8,20 @@
 # granted to it by virtue of its status as an Intergovernmental Organization or
 # submit itself to any jurisdiction.
 
-if(GLFW_FOUND)
+if (TARGET AliceO2::DebugGUI)
   set(GUI_SOURCES src/FrameworkGUIDebugger.cxx src/FrameworkGUIDevicesGraph.cxx
                   src/FrameworkGUIDeviceInspector.cxx
                   src/FrameworkGUIDataRelayerUsage.cxx src/PaletteHelpers.cxx)
+  set(DEBUGGUI_TARGET AliceO2::DebugGUI)
 else()
   set(GUI_SOURCES src/FrameworkDummyDebugger.cxx)
-endif()
-if (TARGET AliceO2::DebugGUI)
-  set(DEBUGGUI_TARGET AliceO2::DebugGUI)
 endif()
 
 # Given GCC 7.3 does not provide std::filesystem we use Boost instead
 # Drop this once we move to GCC 8.2+
-if (NOT __APPLE__)
+# if (NOT __APPLE__)
   set(BOOST_FILESYSTEM Boost::filesystem)
-endif()
+# endif()
 
 o2_add_library(Framework
                SOURCES src/AODReaderHelpers.cxx
@@ -84,7 +82,6 @@ o2_add_library(Framework
                        src/InputRecord.cxx
                        src/InputSpec.cxx
                        src/OutputSpec.cxx
-                       src/Kernels.cxx
                        src/LifetimeHelpers.cxx
                        src/LocalRootFileService.cxx
                        src/RootConfigParamHelpers.cxx
@@ -98,7 +95,9 @@ o2_add_library(Framework
                        src/RCombinedDS.cxx
                        src/ReadoutAdapter.cxx
                        src/ResourcesMonitoringHelper.cxx
+                       src/ServiceRegistry.cxx
                        src/SimpleResourceManager.cxx
+                       src/SimpleRawDeviceService.cxx
                        src/StreamOperators.cxx
                        src/TMessageSerializer.cxx
                        src/TableBuilder.cxx
@@ -177,6 +176,7 @@ foreach(t
         Graphviz
         GroupSlicer
         HistogramRegistry
+        IndexBuilder
         InfoLogger
         InputRecord
         InputRecordWalker
