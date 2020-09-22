@@ -67,6 +67,14 @@ TrackSelection getGlobalTrackSelectionSDD()
   return selectedTracks;
 }
 
+// Default track selection requiring a cluster matched in TOF
+TrackSelection getGlobalTrackSelectionwTOF()
+{
+  TrackSelection selectedTracks = getGlobalTrackSelection();
+  selectedTracks.SetRequireTOF(kTRUE);
+  return selectedTracks;
+}
+
 //****************************************************************************************
 /**
  * Produce the derived track quantities needed for track selection.
@@ -76,8 +84,7 @@ struct TrackExtensionTask {
 
   Produces<aod::TracksExtended> extendedTrackQuantities;
 
-  void process(aod::Collision const& collision,
-               soa::Join<aod::Tracks, aod::TracksExtra, aod::TracksCov> const& tracks)
+  void process(aod::Collision const& collision, aod::FullTracks const& tracks)
   {
     float sinAlpha = 0.f;
     float cosAlpha = 0.f;
@@ -112,18 +119,21 @@ struct TrackSelectionTask {
 
   TrackSelection globalTracks;
   TrackSelection globalTracksSDD;
+  TrackSelection globalTrackswTOF;
 
   void init(InitContext&)
   {
     globalTracks = getGlobalTrackSelection();
     globalTracksSDD = getGlobalTrackSelectionSDD();
+    globalTrackswTOF = getGlobalTrackSelectionwTOF();
   }
 
-  void process(soa::Join<aod::Tracks, aod::TracksCov, aod::TracksExtra, aod::TracksExtended> const& tracks)
+  void process(soa::Join<aod::FullTracks, aod::TracksExtended> const& tracks)
   {
     for (auto& track : tracks) {
       filterTable((uint8_t)globalTracks.IsSelected(track),
-                  (uint8_t)globalTracksSDD.IsSelected(track));
+                  (uint8_t)globalTracksSDD.IsSelected(track),
+                  (uint8_t)globalTrackswTOF.IsSelected(track));
     }
   }
 };
@@ -242,9 +252,7 @@ struct TrackQATask {
 
   void init(o2::framework::InitContext&) {}
 
-  void process(aod::Collision const& collision,
-               soa::Join<aod::Tracks, aod::TracksExtra, aod::TracksCov, aod::TracksExtended,
-                         aod::TrackSelection> const& tracks)
+  void process(aod::Collision const& collision, soa::Join<aod::FullTracks, aod::TracksExtended, aod::TrackSelection> const& tracks)
   {
 
     collisionPos->Fill(collision.posX(), collision.posY());

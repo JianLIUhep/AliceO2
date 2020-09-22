@@ -27,6 +27,7 @@
 
 // TODO: create an array holding these constants for all needed particles or check for a place where these are already defined
 static const float fgkElectronMass = 0.000511; // GeV
+static const float fgkMuonMass = 0.105;        // GeV
 
 //_________________________________________________________________________
 class VarManager : public TObject
@@ -100,6 +101,8 @@ class VarManager : public TObject
     kTOFsignal,
     kTOFbeta,
     kTrackLength,
+    kTrackDCAxy,
+    kTrackDCAz,
     kTrackCYY,
     kTrackCZZ,
     kTrackCSnpSnp,
@@ -124,6 +127,7 @@ class VarManager : public TObject
     kMuonZMu,
     kMuonBendingCoor,
     kMuonNonBendingCoor,
+    kMuonRAtAbsorberEnd,
     kMuonChi2,
     kMuonChi2MatchTrigger,
     kNMuonTrackVariables,
@@ -193,7 +197,7 @@ class VarManager : public TObject
   ~VarManager() override;
 
   static float fgValues[kNVars]; // array holding all variables computed during analysis
-  static void ResetValues(int startValue = 0, int endValue = kNVars);
+  static void ResetValues(int startValue = 0, int endValue = kNVars, float* values = nullptr);
 
  private:
   static bool fgUsedVars[kNVars];        // holds flags for when the corresponding variable is needed (e.g., in the histogram manager, in cuts, mixing handler, etc.)
@@ -284,11 +288,9 @@ void VarManager::FillTrack(T const& track, float* values)
     values[kITSchi2] = track.itsChi2NCl();
     values[kTPCncls] = track.tpcNClsFound();
     values[kTPCchi2] = track.tpcChi2NCl();
-    //values[kTPCsignal] = track.tpcSignal();
-    //values[kTRDsignal] = track.trdSignal();
-    //values[kTOFsignal] = track.tofSignal();
-    //values[kTOFbeta] = track.beta();
     values[kTrackLength] = track.length();
+    values[kTrackDCAxy] = track.dcaXY();
+    values[kTrackDCAz] = track.dcaZ();
   }
 
   if constexpr ((fillMap & TrackCov) > 0) {
@@ -322,10 +324,9 @@ void VarManager::FillTrack(T const& track, float* values)
     values[kITSchi2] = track.itsChi2NCl();
     values[kTPCncls] = track.tpcNClsFound();
     values[kTPCchi2] = track.tpcChi2NCl();
-    //values[kTPCsignal] = track.tpcSignal();
-    //values[kTRDsignal] = track.trdSignal();
-    //values[kTOFsignal] = track.tofSignal();
     values[kTrackLength] = track.length();
+    values[kTrackDCAxy] = track.dcaXY();
+    values[kTrackDCAz] = track.dcaZ();
   }
 
   if constexpr ((fillMap & ReducedTrackBarrelCov) > 0) {
@@ -360,6 +361,7 @@ void VarManager::FillTrack(T const& track, float* values)
     values[kMuonZMu] = track.zMu();
     values[kMuonBendingCoor] = track.bendingCoor();
     values[kMuonNonBendingCoor] = track.nonBendingCoor();
+    values[kMuonRAtAbsorberEnd] = track.rAtAbsorberEnd();
     values[kMuonChi2] = track.chi2();
     values[kMuonChi2MatchTrigger] = track.chi2MatchTrigger();
   }
@@ -377,13 +379,30 @@ void VarManager::FillPair(T const& t1, T const& t2, float* values)
   if (!values)
     values = fgValues;
 
-  ROOT::Math::PtEtaPhiMVector v1(t1.pt(), t1.eta(), t1.phi(), fgkElectronMass);
-  ROOT::Math::PtEtaPhiMVector v2(t2.pt(), t2.eta(), t2.phi(), fgkElectronMass);
+  float mass1 = fgkElectronMass;
+  float mass2 = fgkElectronMass;
+
+  bool isMuon1 = t1.filteringFlags() & (1 << 0);
+  bool isMuon2 = t2.filteringFlags() & (1 << 0);
+
+  if (isMuon1)
+    mass1 = fgkMuonMass;
+  else
+    mass1 = fgkElectronMass;
+
+  if (isMuon2)
+    mass2 = fgkMuonMass;
+  else
+    mass2 = fgkElectronMass;
+
+  ROOT::Math::PtEtaPhiMVector v1(t1.pt(), t1.eta(), t1.phi(), mass1);
+  ROOT::Math::PtEtaPhiMVector v2(t2.pt(), t2.eta(), t2.phi(), mass2);
   ROOT::Math::PtEtaPhiMVector v12 = v1 + v2;
   values[kMass] = v12.M();
   values[kPt] = v12.Pt();
   values[kEta] = v12.Eta();
   values[kPhi] = v12.Phi();
+  values[kRap] = -v12.Rapidity();
 }
 
 template <typename T1, typename T2>
