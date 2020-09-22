@@ -163,7 +163,7 @@ void RawPixelDecoder<Mapping>::setupLinks(InputRecord& inputs)
   auto nLinks = mGBTLinks.size();
   auto origin = (mUserDataOrigin == o2::header::gDataOriginInvalid) ? mMAP.getOrigin() : mUserDataOrigin;
   std::vector<InputSpec> filter{InputSpec{"filter", ConcreteDataTypeMatcher{origin, "RAWDATA"}, Lifetime::Timeframe}};
-  DPLRawParser parser(inputs);
+  DPLRawParser parser(inputs, filter);
   uint32_t currSSpec = 0xffffffff; // dummy starting subspec
   int linksAdded = 0;
   for (auto it = parser.begin(); it != parser.end(); ++it) {
