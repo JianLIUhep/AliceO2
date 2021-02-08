@@ -27,7 +27,6 @@ namespace o2
 namespace mft
 {
 
-
 /// track parameters for internal use
 class TrackParamMFT
 {

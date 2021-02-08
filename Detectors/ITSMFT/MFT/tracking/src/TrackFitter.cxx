@@ -151,7 +151,7 @@ void TrackFitter::initTrack(const Cluster& cl, TrackParamMFT& param)
   double invr0cu = 1.0 / r0cu;
   double sigmax0sq = cl.sigmaX2;
   double sigmay0sq = cl.sigmaY2;
-  double sigmaDeltaZsq = 5.0;         // Primary vertex distribution: beam interaction diamond
+  double sigmaDeltaZsq = 5.0;                      // Primary vertex distribution: beam interaction diamond
   double sigmaboost = mftTrackingParam.sigmaboost; // Boost q/pt seed covariances
   double seedH_k = mftTrackingParam.seedH_k;       // SeedH constant
 
@@ -184,7 +184,8 @@ void TrackFitter::initTrack(const Cluster& cl, TrackParamMFT& param)
       break;
   }
   if (mftTrackingParam.verbose) {
-    auto model = (mftTrackingParam.trackmodel == Helix) ? "Helix" : (mftTrackingParam.trackmodel == Quadratic) ? "Quadratic" : "Linear";
+    auto model = (mftTrackingParam.trackmodel == Helix) ? "Helix" : (mftTrackingParam.trackmodel == Quadratic) ? "Quadratic"
+                                                                                                               : "Linear";
     std::cout << "Track Model: " << model << std::endl;
     std::cout << "  initTrack: X = " << x0 << " Y = " << y0 << " Z = " << z0 << " Tgl = " << param.getTanl() << "  Phi = " << param.getPhi() << " pz = " << param.getPz() << " qpt = " << 1.0 / param.getInvQPt() << std::endl;
   }
@@ -192,8 +193,8 @@ void TrackFitter::initTrack(const Cluster& cl, TrackParamMFT& param)
   // compute the track parameter covariances at the last cluster (as if the other clusters did not exist)
   TMatrixD lastParamCov(5, 5);
   lastParamCov.Zero();
-  lastParamCov(0, 0) = sigmax0sq;                   // <X,X>
-  lastParamCov(0, 1) = 0;                           // <Y,X>
+  lastParamCov(0, 0) = sigmax0sq;                                   // <X,X>
+  lastParamCov(0, 1) = 0;                                           // <Y,X>
   lastParamCov(0, 2) = sigmaboost * -sigmax0sq * y0 * invr0sq;      // <PHI,X>
   lastParamCov(0, 3) = sigmaboost * -z0 * sigmax0sq * x0 * invr0cu; // <TANL,X>
   lastParamCov(0, 4) = sigmaboost * -x0 * sigmax0sq * invr0cu;      // <INVQPT,X>

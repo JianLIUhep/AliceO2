@@ -31,7 +31,7 @@ namespace index_table_utils
 Int_t getRBinIndex(const Int_t, const Float_t);
 Int_t getPhiBinIndex(const Float_t);
 Int_t getBinIndex(const Int_t, const Int_t);
-} // namespace IndexTableUtils
+} // namespace index_table_utils
 
 inline Int_t index_table_utils::getRBinIndex(const Int_t layerIndex, const Float_t rCoordinate)
 {

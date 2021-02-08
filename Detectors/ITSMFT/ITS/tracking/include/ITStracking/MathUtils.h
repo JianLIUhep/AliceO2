@@ -59,7 +59,8 @@ GPUhdi() constexpr float math_utils::getNormalizedPhiCoordinate(const float phiC
 {
   return (phiCoordinate < 0)
            ? phiCoordinate + constants::math::TwoPi
-           : (phiCoordinate > constants::math::TwoPi) ? phiCoordinate - constants::math::TwoPi : phiCoordinate;
+         : (phiCoordinate > constants::math::TwoPi) ? phiCoordinate - constants::math::TwoPi
+                                                    : phiCoordinate;
 }
 
 GPUhdi() constexpr float3 math_utils::crossProduct(const float3& firstVector, const float3& secondVector)

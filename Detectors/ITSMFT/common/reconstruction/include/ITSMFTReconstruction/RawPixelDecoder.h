@@ -101,15 +101,15 @@ class RawPixelDecoder : public PixelReader
   std::vector<GBTLink> mGBTLinks;                           // active links pool
   std::unordered_map<uint32_t, LinkEntry> mSubsSpec2LinkID; // link subspec to link entry in the pool mapping
 
-  std::vector<RUDecodeData> mRUDecodeVec;       // set of active RUs
-  std::array<int, Mapping::getNRUs()> mRUEntry; // entry of the RU with given SW ID in the mRUDecodeVec
-  std::string mSelfName;                        // self name
+  std::vector<RUDecodeData> mRUDecodeVec;                              // set of active RUs
+  std::array<int, Mapping::getNRUs()> mRUEntry;                        // entry of the RU with given SW ID in the mRUDecodeVec
+  std::string mSelfName;                                               // self name
   header::DataOrigin mUserDataOrigin = o2::header::gDataOriginInvalid; // alternative user-provided data origin to pick
-  uint16_t mCurRUDecodeID = NORUDECODED;        // index of currently processed RUDecode container
-  int mLastReadChipID = -1;                     // chip ID returned by previous getNextChipData call, used for ordering checks
-  Mapping mMAP;                                 // chip mapping
+  uint16_t mCurRUDecodeID = NORUDECODED;                               // index of currently processed RUDecode container
+  int mLastReadChipID = -1;                                            // chip ID returned by previous getNextChipData call, used for ordering checks
+  Mapping mMAP;                                                        // chip mapping
   int mVerbosity = 0;
-  int mNThreads = 1; // number of decoding threads
+  int mNThreads = 1;                            // number of decoding threads
   GBTLink::Format mFormat = GBTLink::NewFormat; // ITS Data Format (old: 1 ROF per CRU page)
   // statistics
   o2::itsmft::ROFRecord::ROFtype mROFCounter = 0; // RSTODO is this needed? eliminate from ROFRecord ?

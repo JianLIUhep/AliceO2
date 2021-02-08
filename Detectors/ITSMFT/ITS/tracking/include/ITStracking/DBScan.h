@@ -59,7 +59,8 @@ void DBScan<T>::init(std::vector<T>& vertices, std::function<bool(const T& v1, c
 template <typename T>
 void DBScan<T>::classifyVertices(const int nContributors)
 {
-  classifyVertices([nContributors](std::vector<o2::its::Edge>& edges) { return edges.size() == 0 ? 0 : edges.size() >= static_cast<size_t>(nContributors - 1) ? 2 : 1; },
+  classifyVertices([nContributors](std::vector<o2::its::Edge>& edges) { return edges.size() == 0 ? 0 : edges.size() >= static_cast<size_t>(nContributors - 1) ? 2
+                                                                                                                                                              : 1; },
                    [](State& s1, State& s2) { return static_cast<int>(s1.second) > static_cast<int>(s2.second); });
 }
 
