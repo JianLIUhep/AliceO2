@@ -31,6 +31,7 @@
 #include "Framework/Signpost.h"
 #include "Framework/SourceInfoHeader.h"
 #include "Framework/Logger.h"
+#include "Framework/Monitoring.h"
 #include "DataProcessingStatus.h"
 #include "DataProcessingHelpers.h"
 #include "DataRelayerHelpers.h"
@@ -44,7 +45,6 @@
 #include <options/FairMQProgOptions.h>
 #include <Configuration/ConfigurationInterface.h>
 #include <Configuration/ConfigurationFactory.h>
-#include <Monitoring/Monitoring.h>
 #include <TMessage.h>
 #include <TClonesArray.h>
 
@@ -65,15 +65,13 @@ using DataHeader = o2::header::DataHeader;
 constexpr unsigned int MONITORING_QUEUE_SIZE = 100;
 constexpr unsigned int MIN_RATE_LOGGING = 60;
 
-// This should result in a minimum of 10Hz which should guarantee we do not use
-// much time when idle. We do not sleep at all when we are at less then 100us,
-// because that's what the default rate enforces in any case.
-constexpr int MAX_BACKOFF = 6;
-constexpr int MIN_BACKOFF_DELAY = 100;
-constexpr int BACKOFF_DELAY_STEP = 100;
-
 namespace o2::framework
 {
+
+template <>
+struct ServiceKindExtractor<ConfigurationInterface> {
+  constexpr static ServiceKind kind = ServiceKind::Global;
+};
 
 /// We schedule a timer to reduce CPU usage.
 /// Watching stdin for commands probably a better approach.
@@ -270,13 +268,14 @@ void DataProcessingDevice::Init()
 void on_signal_callback(uv_signal_t* handle, int signum)
 {
   ZoneScopedN("Signal callaback");
-  LOG(debug) << "Signal " << signum << "received." << std::endl;
+  LOG(debug) << "Signal " << signum << " received.";
 }
 
 void DataProcessingDevice::InitTask()
 {
   for (auto& channel : fChannels) {
-    channel.second.at(0).Transport()->SubscribeToRegionEvents([& pendingRegionInfos = mPendingRegionInfos](FairMQRegionInfo info) {
+    channel.second.at(0).Transport()->SubscribeToRegionEvents([& pendingRegionInfos = mPendingRegionInfos, &regionInfoMutex = mRegionInfoMutex](FairMQRegionInfo info) {
+      std::lock_guard<std::mutex> lock(regionInfoMutex);
       LOG(debug) << ">>> Region info event" << info.event;
       LOG(debug) << "id: " << info.id;
       LOG(debug) << "ptr: " << info.ptr;
@@ -293,6 +292,11 @@ void DataProcessingDevice::InitTask()
   uv_signal_t* sigusr1Handle = (uv_signal_t*)malloc(sizeof(uv_signal_t));
   uv_signal_init(mState.loop, sigusr1Handle);
   uv_signal_start(sigusr1Handle, on_signal_callback, SIGUSR1);
+  // Handle SIGWINCH by simply forcing the event loop to continue.
+  // This will hopefully hide it from FairMQ on linux.
+  uv_signal_t* sigwinchHandle = (uv_signal_t*)malloc(sizeof(uv_signal_t));
+  uv_signal_init(mState.loop, sigwinchHandle);
+  uv_signal_start(sigwinchHandle, on_signal_callback, SIGWINCH);
 
   // We add a timer only in case a channel poller is not there.
   if ((mStatefulProcess != nullptr) || (mStatelessProcess != nullptr)) {
@@ -400,18 +404,6 @@ void DataProcessingDevice::fillContext(DataProcessorContext& context)
   context.statefulProcess = &mStatefulProcess;
   context.statelessProcess = &mStatelessProcess;
   context.error = &mError;
-  /// Callbacks for services to be executed before every process method invokation
-  context.preProcessingHandles = &mPreProcessingHandles;
-  /// Callbacks for services to be executed after every process method invokation
-  context.postProcessingHandles = &mPostProcessingHandles;
-  /// Callbacks for services to be executed before every process method invokation
-  context.preDanglingHandles = &mPreDanglingHandles;
-  /// Callbacks for services to be executed after every process method invokation
-  context.postDanglingHandles = &mPostDanglingHandles;
-  /// Callbacks for services to be executed before every EOS user callback invokation
-  context.preEOSHandles = &mPreEOSHandles;
-  /// Callbacks for services to be executed after every EOS user callback invokation
-  context.postEOSHandles = &mPostEOSHandles;
   /// Callback for the error handling
   context.errorHandling = &mErrorHandling;
   context.errorCount = &mErrorCount;
@@ -435,16 +427,20 @@ bool DataProcessingDevice::ConditionalRun()
   if (mState.loop) {
     ZoneScopedN("uv idle");
     TracyPlot("past activity", (int64_t)mWasActive);
-    uv_run(mState.loop, mWasActive ? UV_RUN_NOWAIT : UV_RUN_ONCE);
+    uv_run(mState.loop, mWasActive && (mDataProcessorContexes.at(0).state->streaming != StreamingState::Idle) ? UV_RUN_NOWAIT : UV_RUN_ONCE);
   }
 
   // Notify on the main thread the new region callbacks, making sure
   // no callback is issued if there is something still processing.
-  if (mPendingRegionInfos.empty() == false) {
-    std::vector<FairMQRegionInfo> toBeNotified;
-    toBeNotified.swap(mPendingRegionInfos); // avoid any MT issue.
-    for (auto const& info : toBeNotified) {
-      mServiceRegistry.get<CallbackService>()(CallbackService::Id::RegionInfoCallback, info);
+{
+    std::lock_guard<std::mutex> lock(mRegionInfoMutex);
+    if (mPendingRegionInfos.empty() == false) {
+      std::vector<FairMQRegionInfo> toBeNotified;
+      toBeNotified.swap(mPendingRegionInfos); // avoid any MT issue.
+      for (auto const& info : toBeNotified) {
+        mServiceRegistry.get<CallbackService>()(CallbackService::Id::RegionInfoCallback, info);
+      }
+
     }
   }
   // Synchronous execution of the callbacks. This will be moved in the
@@ -514,9 +510,8 @@ void DataProcessingDevice::doRun(DataProcessorContext& context)
   context.completed->reserve(16);
   *context.wasActive |= DataProcessingDevice::tryDispatchComputation(context, *context.completed);
   DanglingContext danglingContext{*context.registry};
-  for (auto preDanglingHandle : *context.preDanglingHandles) {
-    preDanglingHandle.callback(danglingContext, preDanglingHandle.service);
-  }
+
+  context.registry->preDanglingCallbacks(danglingContext);
   if (*context.wasActive == false) {
     context.registry->get<CallbackService>()(CallbackService::Id::Idle);
   }
@@ -526,9 +521,7 @@ void DataProcessingDevice::doRun(DataProcessorContext& context)
   context.completed->clear();
   *context.wasActive |= DataProcessingDevice::tryDispatchComputation(context, *context.completed);
 
-  for (auto postDanglingHandle : *context.postDanglingHandles) {
-    postDanglingHandle.callback(danglingContext, postDanglingHandle.service);
-  }
+  context.registry->postDanglingCallbacks(danglingContext);
 
   // If we got notified that all the sources are done, we call the EndOfStream
   // callback and return false. Notice that what happens next is actually
@@ -547,13 +540,11 @@ void DataProcessingDevice::doRun(DataProcessorContext& context)
       context.relayer->processDanglingInputs(*context.expirationHandlers, *context.registry);
     }
     EndOfStreamContext eosContext{*context.registry, *context.allocator};
-    for (auto& eosHandle : *context.preEOSHandles) {
-      eosHandle.callback(eosContext, eosHandle.service);
-    }
+
+    context.registry->preEOSCallbacks(eosContext);
     context.registry->get<CallbackService>()(CallbackService::Id::EndOfStream, eosContext);
-    for (auto& eosHandle : *context.postEOSHandles) {
-      eosHandle.callback(eosContext, eosHandle.service);
-    }
+    context.registry->postEOSCallbacks(eosContext);
+
     for (auto& channel : context.spec->outputChannels) {
       DataProcessingHelpers::sendEndOfStream(*context.device, channel);
     }
@@ -715,6 +706,15 @@ auto calculateTotalInputRecordSize(InputRecord const& record) -> int
   }
   return totalInputSize;
 };
+
+template <typename T>
+void update_maximum(std::atomic<T>& maximum_value, T const& value) noexcept
+{
+  T prev_value = maximum_value;
+  while (prev_value < value &&
+         !maximum_value.compare_exchange_weak(prev_value, value)) {
+  }
+}
 } // namespace
 
 bool DataProcessingDevice::tryDispatchComputation(DataProcessorContext& context, std::vector<DataRelayer::RecordAction>& completed)
@@ -780,8 +780,9 @@ bool DataProcessingDevice::tryDispatchComputation(DataProcessorContext& context,
   // create messages) because the messages need to have the timeslice id into
   // it.
   auto prepareAllocatorForCurrentTimeSlice = [& timingInfo = context.timingInfo,
-                                              &timesliceIndex = context.registry->get<TimesliceIndex>()](TimesliceSlot i) {
-    auto timeslice = timesliceIndex.getTimesliceForSlot(i);
+                                              &relayer = context.relayer](TimesliceSlot i) {
+    ZoneScopedN("DataProcessingDevice::prepareForCurrentTimeslice");
+    auto timeslice = relayer->getTimesliceForSlot(i);
     timingInfo->timeslice = timeslice.value;
   };
 
@@ -915,11 +916,13 @@ bool DataProcessingDevice::tryDispatchComputation(DataProcessorContext& context,
   }
 
   auto postUpdateStats = [& stats = context.registry->get<DataProcessingStats>()](DataRelayer::RecordAction const& action, InputRecord const& record, uint64_t tStart) {
+    std::atomic_thread_fence(std::memory_order_release);
     for (size_t ai = 0; ai != record.size(); ai++) {
       auto cacheId = action.slot.index * record.size() + ai;
       auto state = record.isValid(ai) ? 3 : 0;
-      stats.relayerState.resize(std::max(cacheId + 1, stats.relayerState.size()), 0);
-      stats.relayerState[cacheId] = state;
+      update_maximum(stats.statesSize, cacheId + 1);
+      assert(cacheId < DataProcessingStats::MAX_RELAYER_STATES);
+      stats.relayerState[cacheId].store(state);
     }
     uint64_t tEnd = uv_hrtime();
     stats.lastElapsedTimeMs = tEnd - tStart;
@@ -928,11 +931,13 @@ bool DataProcessingDevice::tryDispatchComputation(DataProcessorContext& context,
   };
 
   auto preUpdateStats = [& stats = context.registry->get<DataProcessingStats>()](DataRelayer::RecordAction const& action, InputRecord const& record, uint64_t tStart) {
+    std::atomic_thread_fence(std::memory_order_release);
     for (size_t ai = 0; ai != record.size(); ai++) {
       auto cacheId = action.slot.index * record.size() + ai;
       auto state = record.isValid(ai) ? 2 : 0;
-      stats.relayerState.resize(std::max(cacheId + 1, stats.relayerState.size()), 0);
-      stats.relayerState[cacheId] = state;
+      update_maximum(stats.statesSize, cacheId + 1);
+      assert(cacheId < DataProcessingStats::MAX_RELAYER_STATES);
+      stats.relayerState[cacheId].store(state);
     }
   };
 
@@ -946,9 +951,7 @@ bool DataProcessingDevice::tryDispatchComputation(DataProcessorContext& context,
     ProcessingContext processContext{record, *context.registry, *context.allocator};
     {
       ZoneScopedN("service pre processing");
-      for (auto& handle : *context.preProcessingHandles) {
-        handle.callback(processContext, handle.service);
-      }
+      context.registry->preProcessingCallbacks(processContext);
     }
     if (action.op == CompletionPolicy::CompletionOp::Discard) {
       if (context.spec->forwards.empty() == false) {
@@ -973,9 +976,7 @@ bool DataProcessingDevice::tryDispatchComputation(DataProcessorContext& context,
 
         {
           ZoneScopedN("service post processing");
-          for (auto& handle : *context.postProcessingHandles) {
-            handle.callback(processContext, handle.service);
-          }
+          context.registry->postProcessingCallbacks(processContext);
         }
       }
     } catch (std::exception& e) {
@@ -1013,28 +1014,6 @@ void DataProcessingDevice::error(const char* msg)
   LOG(ERROR) << msg;
   mErrorCount++;
   mServiceRegistry.get<Monitoring>().send(Metric{mErrorCount, "errors"}.addTag(Key::Subsystem, Value::DPL));
-}
-
-void DataProcessingDevice::bindService(ServiceSpec const& spec, void* service)
-{
-  if (spec.preProcessing) {
-    mPreProcessingHandles.push_back(ServiceProcessingHandle{spec.preProcessing, service});
-  }
-  if (spec.postProcessing) {
-    mPostProcessingHandles.push_back(ServiceProcessingHandle{spec.postProcessing, service});
-  }
-  if (spec.preDangling) {
-    mPreDanglingHandles.push_back(ServiceDanglingHandle{spec.preDangling, service});
-  }
-  if (spec.postDangling) {
-    mPostDanglingHandles.push_back(ServiceDanglingHandle{spec.postDangling, service});
-  }
-  if (spec.preEOS) {
-    mPreEOSHandles.push_back(ServiceEOSHandle{spec.preEOS, service});
-  }
-  if (spec.postEOS) {
-    mPostEOSHandles.push_back(ServiceEOSHandle{spec.postEOS, service});
-  }
 }
 
 } // namespace o2::framework
